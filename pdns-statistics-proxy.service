@@ -1,0 +1,14 @@
+[Unit]
+Description=pdns-statistics-proxy
+After=network.target
+
+[Service]
+User=root
+ExecStart=/opt/pdns-statistics-proxy/pdns-statistics-proxy -statsd 127.0.0.1
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
