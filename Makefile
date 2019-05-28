@@ -6,6 +6,7 @@ export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/b
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.12-stretch
+TOOL := pdns-statsd-proxy
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
@@ -42,6 +43,10 @@ pdns-statsd-proxy:
 	@echo ""
 	@echo "***** Building PowerDNS statistics proxy *****"
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
-	go build -ldflags="-s -w" -o $(BINPATH)/pdns-statsd-proxy ./cmd/pdns-statsd-proxy
+	go build -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
+# install used when building locally.
+install:
+	install -g 0 -o 0 -m 0755 -D ./cmd/$(TOOL) /opt/$(TOOL)/$(TOOL)
+	install -g 0 -o 0 -m 0755 -D ./systemd/$(TOOL).service /usr/lib/systemd/system/$(TOOL).service
