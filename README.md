@@ -1,4 +1,4 @@
-# powerdns to statsd bridge
+# PowerDNS statistics to statsd bridge
 
 Background: [PowerDNS](https://www.powerdns.com/) is a powerful open source DNS server that offers both recursive and authoritative packages. It has powerful statistics available via a HTTP RESTFul API, carbon protocol or via a cli tool. The problem with this is that not all metrics systems provide support for carbon or have http agents that support the PowerDNS API.
 
@@ -18,6 +18,7 @@ Will install the artifact from *$PWD/bin* into /opt/pdns-stats-proxy/ and the sy
 
 # Running
 
-enable in systemctl
+Enable in systemctl
 
 ```systemctl enable pdns-stats-proxy```
+
