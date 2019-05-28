@@ -17,14 +17,7 @@ type Config struct {
 	Done       chan bool
 }
 
-func getEnvStr(name string, def string) *string {
-	content, found := os.LookupEnv(name)
-	if found {
-		return &content
-	}
-	return &def
-}
-
+// validateConfiguration confirms that the basic configuration parameters are correctly set.
 func validateConfiguration(config *Config, interval *int) bool {
 	if *config.statsHost == "" {
 		return false
@@ -41,6 +34,16 @@ func validateConfiguration(config *Config, interval *int) bool {
 	return true
 }
 
+// getEnvStr looks up an environment variable or returns the default value.
+func getEnvStr(name string, def string) *string {
+	content, found := os.LookupEnv(name)
+	if found {
+		return &content
+	}
+	return &def
+}
+
+// timePtr returns a pointer for Time.Duration.
 func timePtr(t time.Duration) *time.Duration {
 	return &t
 }

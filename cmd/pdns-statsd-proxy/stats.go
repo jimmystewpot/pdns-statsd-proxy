@@ -18,6 +18,7 @@ type Statistic struct {
 func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 	var statsclient = &statsd.StatsdClient{}
 	host := fmt.Sprintf("%s:%d", *config.statsHost, *config.statsPort)
+
 	if *config.statsHost != "" {
 		if *config.recursor {
 			statsclient = statsd.NewStatsdClient(host, "powerdns.recursor")
@@ -59,6 +60,7 @@ func StatsWorker(config *Config) {
 	}
 }
 
+// processStats emits the statistics via the statsd buffer.
 func processStats(s Statistic) error {
 	switch s.Type {
 	case "gauge":
