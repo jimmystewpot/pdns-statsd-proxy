@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"os"
 	"time"
 )
@@ -18,7 +20,22 @@ type Config struct {
 }
 
 // validateConfiguration confirms that the basic configuration parameters are correctly set.
-func validateConfiguration(config *Config, interval *int) bool {
+func validateConfiguration(config *Config) bool {
+	config.statsHost = flag.String("statsd", "127.0.0.1", "The statsd server to emit metrics")
+	config.statsPort = flag.Int("statsdport", 8125, "The port that statsd is listening on")
+	config.recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	config.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	config.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	interval := flag.Int("interval", 15, "The interval to emit metrics in seconds")
+
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage: %s [options] \n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	config.StatsChan = make(chan Statistic, 1000)
+	config.Done = make(chan bool, 1)
 	if *config.statsHost == "" {
 		return false
 	}

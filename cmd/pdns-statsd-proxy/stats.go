@@ -10,8 +10,8 @@ import (
 // Statistic Wrapper struct
 type Statistic struct {
 	Name  string
-	Value int64
 	Type  string
+	Value int64
 }
 
 // NewStatsClient creates a buffered statsd client.

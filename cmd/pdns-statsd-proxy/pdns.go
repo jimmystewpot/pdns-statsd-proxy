@@ -87,6 +87,7 @@ func (c *DNSClient) Poll(config *Config) {
 		)
 		return
 	}
+
 	log.Info("successfully fetched PowerDNS statistics")
 	for _, stat := range tmp {
 		val, err := strconv.ParseInt(stat.Value, 10, 64)
