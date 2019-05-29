@@ -10,8 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	provider string = "pdns-stats-proxy"
+)
+
 var (
-	log   = zap.NewExample().Named("pdns-stats-proxy")
+	log   = zap.NewExample().Named(provider)
 	stats *statsd.StatsdBuffer
 	gauge = gaugeMetrics()
 	rates = rateMetrics()
