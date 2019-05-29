@@ -29,10 +29,10 @@ type PDNSStat struct {
 func NewPdnsClient(config *Config) *DNSClient {
 	transport := &http.Transport{
 		MaxIdleConns:       10,
-		IdleConnTimeout:    *config.interval,
+		IdleConnTimeout:    *config.interval * 4,
 		DisableCompression: true,
 	}
-	host := fmt.Sprintf("http://%s:8080/api/v1/servers/localhost/statistics", *config.pdnsHost)
+	host := fmt.Sprintf("http://%s:%d/api/v1/servers/localhost/statistics", *config.pdnsHost, *config.pdnsPort)
 	return &DNSClient{
 		Host:   host,
 		APIKey: *config.pdnsAPIKey,

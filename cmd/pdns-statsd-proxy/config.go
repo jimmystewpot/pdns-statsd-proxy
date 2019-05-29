@@ -13,6 +13,7 @@ type Config struct {
 	statsPort  *int
 	interval   *time.Duration
 	pdnsHost   *string
+	pdnsPort   *int
 	pdnsAPIKey *string
 	recursor   *bool
 	StatsChan  chan Statistic
@@ -25,6 +26,7 @@ func validateConfiguration(config *Config) bool {
 	config.statsPort = flag.Int("statsdport", 8125, "The port that statsd is listening on")
 	config.recursor = flag.Bool("recursor", true, "Query recursor statistics")
 	config.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	config.pdnsPort = flag.Int("pdnsPort", 8080, "The port that PowerDNS API is accepting connections")
 	config.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
 	interval := flag.Int("interval", 15, "The interval to emit metrics in seconds")
 
