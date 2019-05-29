@@ -35,6 +35,7 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 
 		return statsd.NewStatsdBuffer(*config.interval, statsclient), nil
 	}
+	// return error
 	return &statsd.StatsdBuffer{}, fmt.Errorf("error, unable to create statsd buffer")
 }
 

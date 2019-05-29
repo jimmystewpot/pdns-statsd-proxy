@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	log   = zap.NewExample().Named("pdns-statistics-proxy")
+	log   = zap.NewExample().Named("pdns-stats-proxy")
 	stats *statsd.StatsdBuffer
 	gauge = gaugeMetrics()
 	rates = rateMetrics()
