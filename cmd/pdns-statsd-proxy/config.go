@@ -66,3 +66,18 @@ func getEnvStr(name string, def string) *string {
 func timePtr(t time.Duration) *time.Duration {
 	return &t
 }
+
+// stringPtr returns a pointer for an input string
+func stringPtr(s string) *string {
+	return &s
+}
+
+// intPtr returns a pointer for an input integer
+func intPtr(i int) *int {
+	return &i
+}
+
+// boolPtr returns a pointer for an input boolean
+func boolPtr(b bool) *bool {
+	return &b
+}
