@@ -21,9 +21,9 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 
 	if *config.statsHost != "" {
 		if *config.recursor {
-			statsclient = statsd.NewStatsdClient(host, "powerdns.recursor")
+			statsclient = statsd.NewStatsdClient(host, "powerdns.recursor.")
 		} else {
-			statsclient = statsd.NewStatsdClient(host, "powerdns.authoritative")
+			statsclient = statsd.NewStatsdClient(host, "powerdns.authoritative.")
 		}
 
 		err := statsclient.CreateSocket()
