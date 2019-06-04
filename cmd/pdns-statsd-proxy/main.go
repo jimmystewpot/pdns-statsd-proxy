@@ -18,7 +18,7 @@ var (
 	log   = zap.NewExample().Named(provider)
 	stats *statsd.StatsdBuffer
 	gauge = gaugeMetrics()
-	rates = rateMetrics()
+	counter_cumulative = counterCumulativeMetrics()
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.

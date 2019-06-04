@@ -14,6 +14,16 @@ type Statistic struct {
 	Value int64
 }
 
+// Abs function to ensure incrementing counters never submit negative values.
+
+func zeroMin(x int64) int64 {
+
+	if x < 0 {
+		return 0
+	}
+	return x
+}
+
 // NewStatsClient creates a buffered statsd client.
 func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 	var statsclient = &statsd.StatsdClient{}
@@ -69,8 +79,9 @@ func processStats(s Statistic) error {
 		if err != nil {
 			return err
 		}
-	case "rate":
-		err := stats.Incr(s.Name, s.Value)
+	case "counter_cumulative": // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
+		err := stats.Incr(s.Name, zeroMin(s.Value - counter_cumulative[s.Name]))
+		counter_cumulative[s.Name] = s.Value
 		if err != nil {
 			return err
 		}
@@ -78,8 +89,8 @@ func processStats(s Statistic) error {
 	return nil
 }
 
-func rateMetrics() map[string]int {
-	rateNames := []string{
+func counterCumulativeMetrics() map[string]int64 {
+	counterCumulativeNames := []string{
 		"all-outqueries",
 		"answers-slow",
 		"answers0-1",
@@ -96,13 +107,11 @@ func rateMetrics() map[string]int {
 		"auth6-answers1-10",
 		"auth6-answers10-100",
 		"auth6-answers100-1000",
-		"cache-bytes",
 		"cache-hits",
 		"cache-misses",
 		"case-mismatches",
 		"chain-resends",
 		"client-parse-errors",
-		"concurrent-queries",
 		"dlg-only-drops",
 		"dnssec-queries",
 		"dnssec-result-bogus",
@@ -117,8 +126,6 @@ func rateMetrics() map[string]int {
 		"ignored-packets",
 		"ipv6-outqueries",
 		"ipv6-questions",
-		"malloc-bytes",
-		"max-mthread-stack",
 		"no-packet-error",
 		"noedns-outqueries",
 		"noerror-answers",
@@ -129,7 +136,6 @@ func rateMetrics() map[string]int {
 		"outgoing4-timeouts",
 		"outgoing6-timeouts",
 		"over-capacity-drops",
-		"packetcache-bytes",
 		"packetcache-hits",
 		"packetcache-misses",
 		"policy-drops",
@@ -139,16 +145,13 @@ func rateMetrics() map[string]int {
 		"policy-result-nodata",
 		"policy-result-truncate",
 		"policy-result-custom",
-		"qa-latency",
 		"questions",
 		"resource-limits",
-		"security-status",
 		"server-parse-errors",
 		"servfail-answers",
 		"spoof-prevents",
 		"sys-msec",
 		"tcp-client-overflow",
-		"tcp-clients",
 		"tcp-outqueries",
 		"tcp-questions",
 		"throttled-out",
@@ -160,20 +163,28 @@ func rateMetrics() map[string]int {
 		"user-msec",
 		"unreachables",
 	}
-	rate := make(map[string]int, len(rateNames))
-	for _, name := range rateNames {
-		rate[name] = 1
+	counter_cumulative := make(map[string]int64, len(counterCumulativeNames))
+	for _, name := range counterCumulativeNames {
+		counter_cumulative[name] = 0
 	}
-	return rate
+	return counter_cumulative
 }
 
 func gaugeMetrics() map[string]int {
 	gaugeNames := []string{
+		"cache-bytes",
 		"cache-entries",
+		"concurrent-queries",
 		"failed-host-entries",
+		"malloc-bytes",
+		"max-mthread-stack",
 		"negcache-entries",
 		"nsspeeds-entries",
 		"packetcache-entries",
+		"packetcache-bytes",
+		"qa-latency",
+		"security-status",
+		"tcp-clients",
 		"throttle-entries",
 		"uptime",
 	}
