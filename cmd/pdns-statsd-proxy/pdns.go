@@ -108,14 +108,14 @@ func (c *DNSClient) Poll(config *Config) error {
 			log.Warn("unable to convert value string to int64 in Poll()")
 			continue
 		}
-		if _, ok := counter_cumulative[stat.Name]; ok {
+		if _, ok := counter_cumulative_names[stat.Name]; ok {
 			config.StatsChan <- Statistic{
 				Name:  stat.Name,
 				Type:  "counter_cumulative",
 				Value: val,
 			}
 		}
-		if _, ok := gauge[stat.Name]; ok {
+		if _, ok := gauge_names[stat.Name]; ok {
 			config.StatsChan <- Statistic{
 				Name:  stat.Name,
 				Type:  "gauge",

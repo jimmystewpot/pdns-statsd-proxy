@@ -80,8 +80,13 @@ func processStats(s Statistic) error {
 			return err
 		}
 	case "counter_cumulative": // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
-		err := stats.Incr(s.Name, zeroMin(s.Value - counter_cumulative[s.Name]))
-		counter_cumulative[s.Name] = s.Value
+		var err error = nil
+		// skip sending first known value for a given incrementing metric because implicit prior value of zero
+		// results in ugly data spikes
+		if counter_cumulative_values[s.Name] != -1 {
+			err = stats.Incr(s.Name, zeroMin(s.Value - counter_cumulative_values[s.Name]))
+		}
+		counter_cumulative_values[s.Name] = s.Value
 		if err != nil {
 			return err
 		}
@@ -165,7 +170,7 @@ func counterCumulativeMetrics() map[string]int64 {
 	}
 	counter_cumulative := make(map[string]int64, len(counterCumulativeNames))
 	for _, name := range counterCumulativeNames {
-		counter_cumulative[name] = 0
+		counter_cumulative[name] = -1
 	}
 	return counter_cumulative
 }

@@ -17,8 +17,9 @@ const (
 var (
 	log   = zap.NewExample().Named(provider)
 	stats *statsd.StatsdBuffer
-	gauge = gaugeMetrics()
-	counter_cumulative = counterCumulativeMetrics()
+	gauge_names = gaugeMetrics()
+	counter_cumulative_values = counterCumulativeMetrics()
+	counter_cumulative_names = counterCumulativeMetrics()
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
