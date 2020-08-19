@@ -5,7 +5,7 @@ export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/b
 
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
-DOCKER_IMAGE := golang:1.12-stretch
+DOCKER_IMAGE := golang:1.15-buster
 TOOL := pdns-statsd-proxy
 
 get-golang:

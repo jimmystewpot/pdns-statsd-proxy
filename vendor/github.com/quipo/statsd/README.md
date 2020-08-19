@@ -19,7 +19,7 @@ This client library was inspired by the one embedded in the [Bit.ly NSQ](https:/
 * `Increment` - Count occurrences per second/minute of a specific event
 * `Decrement` - Count occurrences per second/minute of a specific event
 * `Timing` - To track a duration event
-* `PrecisionTiming - To track a duration event
+* `PrecisionTiming` - To track a duration event
 * `Gauge` (int) / `FGauge` (float) - Gauges are a constant data type. They are not subject to averaging, and they don’t change unless you change them. That is, once you set a gauge value, it will be a flat line on the graph until you change it again
 * `GaugeDelta` (int) / `FGaugeDelta` (float) - Same as above, but as a delta change to the previous value rather than a new absolute value
 * `Absolute` (int) / `FAbsolute` (float) - Absolute-valued metric (not averaged/aggregated)
@@ -70,8 +70,12 @@ The string `%HOST%` in the metric name will automatically be replaced with the h
 
 * `HEAD`:
 
-	* Fixed behaviour of Gauge with positive numbers: the previous behaviour was the same as GaugeDelta
-	  (FGauge already had the correct behaviour)
+    *
+
+* [`v.1.4.0`](https://github.com/quipo/statsd/releases/tag/1.4.0)
+
+    * Fixed behaviour of Gauge with positive numbers: the previous behaviour was the same as GaugeDelta
+      (FGauge already had the correct behaviour)
     * Added more tests
     * Small optimisation: replace string formatting with concatenation (thanks to @agnivade)
 
