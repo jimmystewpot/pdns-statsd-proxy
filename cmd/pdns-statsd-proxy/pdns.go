@@ -49,7 +49,7 @@ func DNSWorker(config *Config, c *DNSClient) {
 		case <-interval.C:
 			err := c.Poll(config)
 			if err != nil {
-				log.Warn("unable to poll PowerDNS in DNSWorker",
+				log.Warn("powerdns client",
 					zap.Error(err),
 				)
 			}
@@ -62,42 +62,41 @@ func DNSWorker(config *Config, c *DNSClient) {
 
 // Poll for statistics
 func (c *DNSClient) Poll(config *Config) error {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				log.Info("recovered from panic",
+					zap.Error(err),
+				)
+			}
+		}
+	}()
 	request, err := http.NewRequest("GET", c.Host, nil)
 	if err != nil {
-		log.Fatal("error in powerdns client request",
-			zap.Error(err),
-		)
+		return fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
+
 	request.Header.Add("X-API-Key", c.APIKey)
 	request.Header.Add("User-Agent", provider)
 
 	response, err := c.C.Do(request)
 	if err != nil {
-		log.Fatal("error in powerdns client request",
-			zap.Int("status_code", response.StatusCode),
-			zap.Error(err),
-		)
+		return err
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		log.Warn("non http status ok returned")
-		return fmt.Errorf(fmt.Sprintf("status_code %d returned from PowerDNS", response.StatusCode))
+		return fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatal("error reading response body",
-			zap.Error(err),
-		)
+		return err
 	}
 
 	tmp := []PDNSStat{}
 	err = json.Unmarshal(body, &tmp)
 	if err != nil {
-		log.Warn("unable to unmarshal json from powerdns Poll()",
-			zap.Error(err),
-		)
 		return err
 	}
 

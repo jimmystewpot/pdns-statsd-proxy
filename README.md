@@ -22,3 +22,9 @@ Enable in systemctl
 
 ```systemctl enable pdns-stats-proxy```
 
+# PowerDNS Support
+
+* 4.0
+* 4.1
+* 4.2
+* 4.3
