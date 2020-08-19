@@ -20,9 +20,9 @@ type DNSClient struct {
 
 // PDNSStat incoming statistics type
 type PDNSStat struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Value string `json:"value"`
+	Name  string      `json:"name"`
+	Type  string      `json:"type"`
+	Value interface{} `json:"value"`
 }
 
 // NewPdnsClient returns a powerdns client.
@@ -102,27 +102,56 @@ func (c *DNSClient) Poll(config *Config) error {
 	}
 
 	log.Info("successfully fetched PowerDNS statistics")
+
 	for _, stat := range tmp {
-		val, err := strconv.ParseInt(stat.Value, 10, 64)
-		if err != nil {
-			log.Warn("unable to convert value string to int64 in Poll()")
+		switch stat.Type {
+		case "StatisticItem":
+			if str, ok := stat.Value.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					log.Warn("unable to convert value string to int64 in Poll()")
+					continue
+				}
+				if _, ok := gaugeNames[stat.Name]; ok {
+					config.StatsChan <- Statistic{
+						Name:  stat.Name,
+						Type:  gauge,
+						Value: val,
+					}
+					continue
+				}
+
+				// populate the map with metrics names.
+				if _, ok := counterCumulativeValues[stat.Name]; !ok {
+					counterCumulativeValues[stat.Name] = -1
+				}
+
+				config.StatsChan <- Statistic{
+					Name:  stat.Name,
+					Type:  counterCumulative,
+					Value: val,
+				}
+			}
+		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
+
+			for _, i := range stat.Value.([]interface{}) {
+
+				if m, ok := i.(map[string]interface{}); ok {
+					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
+					if err != nil {
+						log.Warn("unable to convert value string to int64 in Poll()")
+						continue
+					}
+					config.StatsChan <- Statistic{
+						Name:  fmt.Sprintf("%s-%s", stat.Name, m["name"]),
+						Type:  counterCumulative,
+						Value: val,
+					}
+				}
+			}
+		default:
 			continue
 		}
-		if _, ok := counter_cumulative_names[stat.Name]; ok {
-			config.StatsChan <- Statistic{
-				Name:  stat.Name,
-				Type:  "counter_cumulative",
-				Value: val,
-			}
-		}
-		if _, ok := gauge_names[stat.Name]; ok {
-			config.StatsChan <- Statistic{
-				Name:  stat.Name,
-				Type:  "gauge",
-				Value: val,
-			}
-		}
 	}
-
 	return nil
 }

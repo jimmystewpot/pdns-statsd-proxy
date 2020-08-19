@@ -74,105 +74,27 @@ func StatsWorker(config *Config) {
 // processStats emits the statistics via the statsd buffer.
 func processStats(s Statistic) error {
 	switch s.Type {
-	case "gauge":
+	case gauge:
 		err := stats.Gauge(s.Name, s.Value)
 		if err != nil {
 			return err
 		}
-	case "counter_cumulative": // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
+	case counterCumulative: // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
 		var err error = nil
 		// skip sending first known value for a given incrementing metric because implicit prior value of zero
 		// results in ugly data spikes
-		if counter_cumulative_values[s.Name] != -1 {
-			err = stats.Incr(s.Name, zeroMin(s.Value - counter_cumulative_values[s.Name]))
+		if counterCumulativeValues[s.Name] != -1 {
+			err = stats.Incr(s.Name, zeroMin(s.Value-counterCumulativeValues[s.Name]))
+			if err != nil {
+
+			}
 		}
-		counter_cumulative_values[s.Name] = s.Value
+		counterCumulativeValues[s.Name] = s.Value
 		if err != nil {
 			return err
 		}
 	}
 	return nil
-}
-
-func counterCumulativeMetrics() map[string]int64 {
-	counterCumulativeNames := []string{
-		"all-outqueries",
-		"answers-slow",
-		"answers0-1",
-		"answers1-10",
-		"answers10-100",
-		"answers100-1000",
-		"auth4-answers-slow",
-		"auth4-answers0-1",
-		"auth4-answers1-10",
-		"auth4-answers10-100",
-		"auth4-answers100-1000",
-		"auth6-answers-slow",
-		"auth6-answers0-1",
-		"auth6-answers1-10",
-		"auth6-answers10-100",
-		"auth6-answers100-1000",
-		"cache-hits",
-		"cache-misses",
-		"case-mismatches",
-		"chain-resends",
-		"client-parse-errors",
-		"dlg-only-drops",
-		"dnssec-queries",
-		"dnssec-result-bogus",
-		"dnssec-result-indeterminate",
-		"dnssec-result-insecure",
-		"dnssec-result-nta",
-		"dnssec-result-secure",
-		"dnssec-validations",
-		"dont-outqueries",
-		"edns-ping-matches",
-		"edns-ping-mismatches",
-		"ignored-packets",
-		"ipv6-outqueries",
-		"ipv6-questions",
-		"no-packet-error",
-		"noedns-outqueries",
-		"noerror-answers",
-		"noping-outqueries",
-		"nsset-invalidations",
-		"nxdomain-answers",
-		"outgoing-timeouts",
-		"outgoing4-timeouts",
-		"outgoing6-timeouts",
-		"over-capacity-drops",
-		"packetcache-hits",
-		"packetcache-misses",
-		"policy-drops",
-		"policy-result-noaction",
-		"policy-result-drop",
-		"policy-result-nxdomain",
-		"policy-result-nodata",
-		"policy-result-truncate",
-		"policy-result-custom",
-		"questions",
-		"resource-limits",
-		"server-parse-errors",
-		"servfail-answers",
-		"spoof-prevents",
-		"sys-msec",
-		"tcp-client-overflow",
-		"tcp-outqueries",
-		"tcp-questions",
-		"throttled-out",
-		"throttled-outqueries",
-		"too-old-drops",
-		"unauthorized-tcp",
-		"unauthorized-udp",
-		"unexpected-packets",
-		"user-msec",
-		"unreachables",
-	}
-	counter_cumulative := make(map[string]int64, len(counterCumulativeNames))
-	for _, name := range counterCumulativeNames {
-		counter_cumulative[name] = -1
-	}
-	return counter_cumulative
 }
 
 func gaugeMetrics() map[string]int {
