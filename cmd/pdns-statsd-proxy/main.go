@@ -12,14 +12,16 @@ import (
 
 const (
 	provider string = "pdns-stats-proxy"
+	// metric types
+	counterCumulative string = "counter_cumulative"
+	gauge             string = "gauge"
 )
 
 var (
-	log   = zap.NewExample().Named(provider)
-	stats *statsd.StatsdBuffer
-	gauge_names = gaugeMetrics()
-	counter_cumulative_values = counterCumulativeMetrics()
-	counter_cumulative_names = counterCumulativeMetrics()
+	log                     = zap.NewExample().Named(provider)
+	stats                   *statsd.StatsdBuffer
+	gaugeNames              = gaugeMetrics()
+	counterCumulativeValues map[string]int64
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
@@ -54,6 +56,8 @@ func main() {
 	if err != nil {
 		log.Fatal("Unable to initiate statsd client")
 	}
+
+	counterCumulativeValues = make(map[string]int64)
 
 	// initiate the powerdns client.
 	pdnsClient := NewPdnsClient(config)
