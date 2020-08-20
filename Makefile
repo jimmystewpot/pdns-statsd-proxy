@@ -48,5 +48,5 @@ pdns-statsd-proxy:
 
 # install used when building locally.
 install:
-	install -g 0 -o 0 -m 0755 -D ./cmd/$(TOOL) /opt/$(TOOL)/$(TOOL)
+	install -g 0 -o 0 -m 0755 -D ./$(BINPATH)/$(TOOL) /opt/$(TOOL)/$(TOOL)
 	install -g 0 -o 0 -m 0755 -D ./systemd/$(TOOL).service /usr/lib/systemd/system/$(TOOL).service
