@@ -57,6 +57,7 @@ func DNSWorker(config *Config, c *DNSClient) {
 				log.Warn("powerdns client",
 					zap.Error(err),
 				)
+				continue
 			}
 			err = decodeStats(response, config)
 			if err != nil {

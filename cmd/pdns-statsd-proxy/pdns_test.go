@@ -30,36 +30,70 @@ func TestDNSWorker(t *testing.T) {
 		c      *DNSClient
 	}
 	tests := []struct {
-		name string
-		args args
+		name             string
+		args             args
+		testDataFile     string
+		testResponseCode int
 	}{
 		{
-			name: "test starting of worker",
+			name: "Good HTTP Response, Good Payload",
 			args: args{
 				config: testConfig(),
 				c:      testDNSClient(),
 			},
+			testDataFile:     "4.3.3",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Good HTTP Response, Bad Payload",
+			args: args{
+				config: testConfig(),
+				c:      testDNSClient(),
+			},
+			testDataFile:     "4.3.3-bad",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Bad HTTP Response, Good Payload",
+			args: args{
+				config: testConfig(),
+				c:      testDNSClient(),
+			},
+			testDataFile:     "4.3.3",
+			testResponseCode: http.StatusUnauthorized,
+		},
+		{
+			name: "Bad HTTP Response, Bad Payload",
+			args: args{
+				config: testConfig(),
+				c:      testDNSClient(),
+			},
+			testDataFile:     "4.3.3-bad",
+			testResponseCode: http.StatusUnauthorized,
 		},
 	}
-	// start a mock server.
-	listener, _ := net.Listen("tcp", "127.0.0.1:8089")
-	pdns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, readpdnsTestData("4.3.3"))
-	}))
-	pdns.Listener = listener
-
-	pdns.Start()
-	defer pdns.Close()
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// start a mock server.
+			listener, _ := net.Listen("tcp", "127.0.0.1:8089")
+			pdns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.testResponseCode)
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
+			}))
+			pdns.Listener = listener
+			pdns.Start()
+
+			// close the channel in the background to test a correct exit state.
 			go func(config *Config) {
 				time.Sleep(time.Duration(1500) * time.Millisecond)
 				close(config.Done)
 			}(tt.args.config)
+
 			go DNSWorker(tt.args.config, tt.args.c)
 			time.Sleep(time.Duration(1500) * time.Millisecond)
+			pdns.Close()
 		})
 	}
 }
