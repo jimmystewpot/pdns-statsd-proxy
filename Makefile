@@ -50,7 +50,7 @@ test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
 	GOOS=linux GOARCH=amd64 \
-	go test -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
 	@echo ""
 
 
