@@ -22,8 +22,8 @@ type Config struct {
 
 // validateConfiguration confirms that the basic configuration parameters are correctly set.
 func validateConfiguration(config *Config) bool {
-	config.statsHost = flag.String("statsd", "127.0.0.1", "The statsd server to emit metrics")
-	config.statsPort = flag.String("statsdport", "8125", "The port that statsd is listening on")
+	config.statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	config.statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
 	config.recursor = flag.Bool("recursor", true, "Query recursor statistics")
 	config.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
 	config.pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
@@ -70,11 +70,6 @@ func timePtr(t time.Duration) *time.Duration {
 // stringPtr returns a pointer for an input string
 func stringPtr(s string) *string {
 	return &s
-}
-
-// intPtr returns a pointer for an input integer
-func intPtr(i int) *int {
-	return &i
 }
 
 // boolPtr returns a pointer for an input boolean

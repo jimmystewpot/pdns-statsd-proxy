@@ -59,14 +59,15 @@ test:
 
 
 test-synk: get-synk
+	@echo ""
+	@echo "***** Testing vulnerabilities using Synk *****"
 	@docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
-		-e GOPATH=/build \
-		-e PATH=$(PATH) \
 		-e SNYK_TOKEN=${SYNK_TOKEN} \
-		-it ${SYNK_IMAGE} 	
+		-e MONITOR=true \
+		-t ${SYNK_IMAGE}
 
 # install used when building locally.
 install:

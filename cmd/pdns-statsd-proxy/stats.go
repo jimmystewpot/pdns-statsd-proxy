@@ -18,7 +18,6 @@ type Statistic struct {
 // Abs function to ensure incrementing counters never submit negative values.
 
 func zeroMin(x int64) int64 {
-
 	if x < 0 {
 		return 0
 	}
