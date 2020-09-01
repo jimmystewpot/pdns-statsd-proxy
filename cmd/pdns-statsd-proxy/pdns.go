@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,7 +33,11 @@ func NewPdnsClient(config *Config) *DNSClient {
 		IdleConnTimeout:    *config.interval * 4,
 		DisableCompression: true,
 	}
-	host := fmt.Sprintf("http://%s:%d/api/v1/servers/localhost/statistics", *config.pdnsHost, *config.pdnsPort)
+
+	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
+
+	host := fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+
 	return &DNSClient{
 		Host:   host,
 		APIKey: *config.pdnsAPIKey,
