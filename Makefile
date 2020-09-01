@@ -37,7 +37,7 @@ build: get-golang
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
-build-all: pdns-statsd-proxy
+build-all: test pdns-statsd-proxy
 
 pdns-statsd-proxy:
 	@echo ""
@@ -45,6 +45,14 @@ pdns-statsd-proxy:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
 	go build -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
+
+test:
+	@echo ""
+	@echo "***** Testing PowerDNS statistics proxy *****"
+	GOOS=linux GOARCH=amd64 \
+	go test -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	@echo ""
+
 
 # install used when building locally.
 install:

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -32,7 +33,11 @@ func NewPdnsClient(config *Config) *DNSClient {
 		IdleConnTimeout:    *config.interval * 4,
 		DisableCompression: true,
 	}
-	host := fmt.Sprintf("http://%s:%d/api/v1/servers/localhost/statistics", *config.pdnsHost, *config.pdnsPort)
+
+	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
+
+	host := fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+
 	return &DNSClient{
 		Host:   host,
 		APIKey: *config.pdnsAPIKey,
@@ -47,9 +52,15 @@ func DNSWorker(config *Config, c *DNSClient) {
 	for {
 		select {
 		case <-interval.C:
-			err := c.Poll(config)
+			response, err := c.Poll(config)
 			if err != nil {
 				log.Warn("powerdns client",
+					zap.Error(err),
+				)
+			}
+			err = decodeStats(response, config)
+			if err != nil {
+				log.Warn("powerdns decodeStats",
 					zap.Error(err),
 				)
 			}
@@ -61,7 +72,7 @@ func DNSWorker(config *Config, c *DNSClient) {
 }
 
 // Poll for statistics
-func (c *DNSClient) Poll(config *Config) error {
+func (c *DNSClient) Poll(config *Config) (*http.Response, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
@@ -71,9 +82,10 @@ func (c *DNSClient) Poll(config *Config) error {
 			}
 		}
 	}()
+
 	request, err := http.NewRequest("GET", c.Host, nil)
 	if err != nil {
-		return fmt.Errorf("unable to instantiate new http client: %s", err)
+		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
 
 	request.Header.Add("X-API-Key", c.APIKey)
@@ -81,28 +93,34 @@ func (c *DNSClient) Poll(config *Config) error {
 
 	response, err := c.C.Do(request)
 	if err != nil {
-		return err
+		return &http.Response{}, err
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
-		return fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
+		return &http.Response{}, fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
 	}
+
+	log.Info("successfully queried PowerDNS statistics")
+
+	return response, nil
+}
+
+func decodeStats(response *http.Response, config *Config) error {
+	defer response.Body.Close()
+
+	stats := make([]PDNSStat, 0)
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
 
-	tmp := []PDNSStat{}
-	err = json.Unmarshal(body, &tmp)
+	err = json.Unmarshal(body, &stats)
 	if err != nil {
 		return err
 	}
 
-	log.Info("successfully fetched PowerDNS statistics")
-
-	for _, stat := range tmp {
+	for _, stat := range stats {
 		switch stat.Type {
 		case "StatisticItem":
 			if str, ok := stat.Value.(string); ok {
@@ -138,8 +156,7 @@ func (c *DNSClient) Poll(config *Config) error {
 				if m, ok := i.(map[string]interface{}); ok {
 					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
 					if err != nil {
-						log.Warn("unable to convert value string to int64 in Poll()")
-						continue
+						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 					}
 					config.StatsChan <- Statistic{
 						Name:  fmt.Sprintf("%s-%s", stat.Name, m["name"]),

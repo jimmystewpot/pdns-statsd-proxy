@@ -10,10 +10,10 @@ import (
 // Config holds all the configuration required to start the service.
 type Config struct {
 	statsHost  *string
-	statsPort  *int
+	statsPort  *string
 	interval   *time.Duration
 	pdnsHost   *string
-	pdnsPort   *int
+	pdnsPort   *string
 	pdnsAPIKey *string
 	recursor   *bool
 	StatsChan  chan Statistic
@@ -23,10 +23,10 @@ type Config struct {
 // validateConfiguration confirms that the basic configuration parameters are correctly set.
 func validateConfiguration(config *Config) bool {
 	config.statsHost = flag.String("statsd", "127.0.0.1", "The statsd server to emit metrics")
-	config.statsPort = flag.Int("statsdport", 8125, "The port that statsd is listening on")
+	config.statsPort = flag.String("statsdport", "8125", "The port that statsd is listening on")
 	config.recursor = flag.Bool("recursor", true, "Query recursor statistics")
 	config.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
-	config.pdnsPort = flag.Int("pdnsPort", 8080, "The port that PowerDNS API is accepting connections")
+	config.pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
 	config.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
 	interval := flag.Int("interval", 15, "The interval to emit metrics in seconds")
 
