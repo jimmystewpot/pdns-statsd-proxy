@@ -6,10 +6,14 @@ export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/b
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.15-buster
+SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
+
+get-synk:
+	docker pull ${SYNK_IMAGE}
 
 .PHONY: clean
 clean:
@@ -53,6 +57,16 @@ test:
 	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
 	@echo ""
 
+
+test-synk: get-synk
+	docker run \
+		--rm \
+		-v $(CURDIR):/build/$(GO_DIR) \
+		--workdir /build/$(GO_DIR) \
+		-e GOPATH=/build \
+		-e PATH=$(PATH) \
+		-e SNYK_TOKEN=${SYNK_TOKEN} \
+		-it ${SYNK_IMAGE} 	
 
 # install used when building locally.
 install:
