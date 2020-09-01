@@ -42,8 +42,8 @@ build-all: test pdns-statsd-proxy
 pdns-statsd-proxy:
 	@echo ""
 	@echo "***** Building PowerDNS statistics proxy *****"
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
-	go build -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
+	GOOS=linux GOARCH=amd64 \
+	go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 test:

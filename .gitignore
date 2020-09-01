@@ -1,2 +1,4 @@
 bin/pdns-statsd-proxy
 .vscode
+coverage.txt
+pdns_recursor.pid
