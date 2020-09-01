@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/quipo/statsd"
 	"go.uber.org/zap"
@@ -27,7 +28,7 @@ func zeroMin(x int64) int64 {
 // NewStatsClient creates a buffered statsd client.
 func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 	var statsclient = &statsd.StatsdClient{}
-	host := fmt.Sprintf("%s:%d", *config.statsHost, *config.statsPort)
+	host := net.JoinHostPort(*config.statsHost, *config.statsPort)
 
 	if *config.statsHost != "" {
 		if *config.recursor {
@@ -60,7 +61,7 @@ func StatsWorker(config *Config) {
 			if err != nil {
 				log.Warn("error submitting statistics",
 					zap.String("host", *config.statsHost),
-					zap.Int("port", *config.statsPort),
+					zap.String("port", *config.statsPort),
 					zap.Error(err),
 				)
 			}

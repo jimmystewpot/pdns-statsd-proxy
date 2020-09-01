@@ -13,7 +13,7 @@ func newTestConfig() *Config {
 	config := &Config{
 		Done:      done,
 		statsHost: stringPtr("127.0.0.1"),
-		statsPort: intPtr(8125),
+		statsPort: stringPtr("8125"),
 		recursor:  boolPtr(true),
 		interval:  timePtr(time.Duration(10) * time.Second),
 	}
