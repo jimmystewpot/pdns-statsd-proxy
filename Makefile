@@ -59,7 +59,7 @@ test:
 
 
 test-synk: get-synk
-	docker run \
+	@docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
