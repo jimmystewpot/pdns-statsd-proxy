@@ -95,7 +95,6 @@ func (c *DNSClient) Poll(config *Config) (*http.Response, error) {
 	if err != nil {
 		return &http.Response{}, err
 	}
-	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
 		return &http.Response{}, fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
@@ -107,6 +106,8 @@ func (c *DNSClient) Poll(config *Config) (*http.Response, error) {
 }
 
 func decodeStats(response *http.Response, config *Config) error {
+	defer response.Body.Close()
+
 	stats := make([]PDNSStat, 0)
 
 	body, err := ioutil.ReadAll(response.Body)
@@ -155,8 +156,7 @@ func decodeStats(response *http.Response, config *Config) error {
 				if m, ok := i.(map[string]interface{}); ok {
 					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
 					if err != nil {
-						log.Warn("unable to convert value string to int64 in Poll()")
-						continue
+						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 					}
 					config.StatsChan <- Statistic{
 						Name:  fmt.Sprintf("%s-%s", stat.Name, m["name"]),
