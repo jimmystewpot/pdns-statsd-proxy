@@ -17,7 +17,7 @@ This tool aims to provide a lightweight http to statsd bridge/proxy. It will que
 
 ## authoritative
 
-tbd
+* 4.3
 
 
 # Build
