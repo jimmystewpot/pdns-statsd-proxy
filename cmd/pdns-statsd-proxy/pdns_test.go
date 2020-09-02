@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func readpdnsTestData(version string) string {
@@ -19,83 +21,16 @@ func readpdnsTestData(version string) string {
 	return string(f)
 }
 
-func testDNSClient() *DNSClient {
-	return NewPdnsClient(testConfig())
-}
-
-func TestDNSWorker(t *testing.T) {
-	counterCumulativeValues = make(map[string]int64)
-	type args struct {
-		config *Config
-		c      *DNSClient
+func testDNSClient(config *Config) *pdnsClient {
+	// initiate the powerdns client.
+	pdnsClient := new(pdnsClient)
+	err := pdnsClient.Initialise(config)
+	if err != nil {
+		log.Fatal("unable to initialise powerdns client",
+			zap.Error(err),
+		)
 	}
-	tests := []struct {
-		name             string
-		args             args
-		testDataFile     string
-		testResponseCode int
-	}{
-		{
-			name: "Good HTTP Response, Good Payload",
-			args: args{
-				config: testConfig(),
-				c:      testDNSClient(),
-			},
-			testDataFile:     "4.3.3",
-			testResponseCode: http.StatusOK,
-		},
-		{
-			name: "Good HTTP Response, Bad Payload",
-			args: args{
-				config: testConfig(),
-				c:      testDNSClient(),
-			},
-			testDataFile:     "4.3.3-bad",
-			testResponseCode: http.StatusOK,
-		},
-		{
-			name: "Bad HTTP Response, Good Payload",
-			args: args{
-				config: testConfig(),
-				c:      testDNSClient(),
-			},
-			testDataFile:     "4.3.3",
-			testResponseCode: http.StatusUnauthorized,
-		},
-		{
-			name: "Bad HTTP Response, Bad Payload",
-			args: args{
-				config: testConfig(),
-				c:      testDNSClient(),
-			},
-			testDataFile:     "4.3.3-bad",
-			testResponseCode: http.StatusUnauthorized,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// start a mock server.
-			listener, _ := net.Listen("tcp", "127.0.0.1:8089")
-			pdns := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(tt.testResponseCode)
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
-			}))
-			pdns.Listener = listener
-			pdns.Start()
-
-			// close the channel in the background to test a correct exit state.
-			go func(config *Config) {
-				time.Sleep(time.Duration(1500) * time.Millisecond)
-				close(config.Done)
-			}(tt.args.config)
-
-			go DNSWorker(tt.args.config, tt.args.c)
-			time.Sleep(time.Duration(1500) * time.Millisecond)
-			pdns.Close()
-		})
-	}
+	return pdnsClient
 }
 
 func Test_decodeStats(t *testing.T) {
@@ -113,7 +48,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("4.3.3"))),
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 				},
 				config: testConfig(),
 			},
@@ -124,7 +59,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("4.3.3-bad"))),
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
 				},
 				config: testConfig(),
 			},
@@ -141,6 +76,81 @@ func Test_decodeStats(t *testing.T) {
 			if (len(tt.args.config.StatsChan) != tt.count) != tt.wantErr {
 				t.Errorf("expected %d stats got %d", tt.count, len(tt.args.config.StatsChan))
 			}
+		})
+	}
+}
+
+func Test_pdnsClient_Worker(t *testing.T) {
+	type args struct {
+		config *Config
+	}
+	tests := []struct {
+		name             string
+		args             args
+		testDataFile     string
+		testResponseCode int
+	}{
+		{
+			name: "Good HTTP Response, Good Payload",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-4.3.3",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Good HTTP Response, Bad Payload",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-4.3.3-bad",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Bad HTTP Response, Good Payload",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-4.3.3",
+			testResponseCode: http.StatusUnauthorized,
+		},
+		{
+			name: "Bad HTTP Response, Bad Payload",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-4.3.3-bad",
+			testResponseCode: http.StatusUnauthorized,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pdns := testDNSClient(tt.args.config)
+
+			// setup a local http mock to simulate the powerdns api
+			listener, err := net.Listen("tcp", "127.0.0.1:8089")
+			if err != nil {
+				t.Errorf("got error trying to start mock listener: %s", err)
+			}
+			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.testResponseCode)
+				w.Header().Set("Content-Type", "application/json")
+				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
+			}))
+			srv.Listener = listener
+			srv.Start()
+
+			// close the channel in the background to test a correct exit state.
+			go func(config *Config) {
+				time.Sleep(time.Duration(1000) * time.Millisecond)
+				close(config.Done)
+			}(tt.args.config)
+
+			go pdns.Worker(tt.args.config)
+			time.Sleep(time.Duration(1500) * time.Millisecond)
+
+			// close the mock server.
+			srv.Close()
 		})
 	}
 }

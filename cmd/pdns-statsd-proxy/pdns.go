@@ -13,10 +13,10 @@ import (
 )
 
 // DNSClient ...
-type DNSClient struct {
+type pdnsClient struct {
 	Host   string
 	APIKey string
-	C      *http.Client
+	Client *http.Client
 }
 
 // PDNSStat incoming statistics type
@@ -26,8 +26,8 @@ type PDNSStat struct {
 	Value interface{} `json:"value"`
 }
 
-// NewPdnsClient returns a powerdns client.
-func NewPdnsClient(config *Config) *DNSClient {
+// Initialise a new powerdns client.
+func (pdns *pdnsClient) Initialise(config *Config) error {
 	transport := &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    *config.interval * 4,
@@ -36,23 +36,21 @@ func NewPdnsClient(config *Config) *DNSClient {
 
 	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
 
-	host := fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+	pdns.APIKey = *config.pdnsAPIKey
+	pdns.Client = &http.Client{Transport: transport}
 
-	return &DNSClient{
-		Host:   host,
-		APIKey: *config.pdnsAPIKey,
-		C:      &http.Client{Transport: transport},
-	}
+	return nil
 }
 
-// DNSWorker wraps a ticker for task execution.
-func DNSWorker(config *Config, c *DNSClient) {
+// Worker wraps a ticker for task execution to query the powerdns API.
+func (pdns *pdnsClient) Worker(config *Config) {
 	log.Info("Starting PowerDNS statistics worker...")
 	interval := time.NewTicker(*config.interval)
 	for {
 		select {
 		case <-interval.C:
-			response, err := c.Poll(config)
+			response, err := pdns.Poll()
 			if err != nil {
 				log.Warn("powerdns client",
 					zap.Error(err),
@@ -73,26 +71,26 @@ func DNSWorker(config *Config, c *DNSClient) {
 }
 
 // Poll for statistics
-func (c *DNSClient) Poll(config *Config) (*http.Response, error) {
+func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
-				log.Info("recovered from panic",
+				log.Warn("recovered from panic in pdnsClient.Polll()",
 					zap.Error(err),
 				)
 			}
 		}
 	}()
 
-	request, err := http.NewRequest("GET", c.Host, nil)
+	request, err := http.NewRequest("GET", pdns.Host, nil)
 	if err != nil {
 		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
 
-	request.Header.Add("X-API-Key", c.APIKey)
+	request.Header.Add("X-API-Key", pdns.APIKey)
 	request.Header.Add("User-Agent", provider)
 
-	response, err := c.C.Do(request)
+	response, err := pdns.Client.Do(request)
 	if err != nil {
 		return &http.Response{}, err
 	}

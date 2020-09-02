@@ -26,7 +26,7 @@ func zeroMin(x int64) int64 {
 
 // NewStatsClient creates a buffered statsd client.
 func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
-	var statsclient = &statsd.StatsdClient{}
+	var statsclient = new(statsd.StatsdClient)
 	host := net.JoinHostPort(*config.statsHost, *config.statsPort)
 
 	if *config.statsHost != "" {
@@ -73,6 +73,16 @@ func StatsWorker(config *Config) {
 
 // processStats emits the statistics via the statsd buffer.
 func processStats(s Statistic) error {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				log.Info("recovered from panic in statsd processStats()",
+					zap.Error(err),
+				)
+			}
+		}
+	}()
+
 	switch s.Type {
 	case gauge:
 		err := stats.Gauge(s.Name, s.Value)
