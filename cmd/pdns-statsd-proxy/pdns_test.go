@@ -39,10 +39,11 @@ func Test_decodeStats(t *testing.T) {
 		config   *Config
 	}
 	tests := []struct {
-		name    string
-		args    args
-		count   int
-		wantErr bool
+		name     string
+		args     args
+		count    int
+		recursor bool
+		wantErr  bool
 	}{
 		{
 			name: "recursor 4.3 valid",
@@ -52,8 +53,9 @@ func Test_decodeStats(t *testing.T) {
 				},
 				config: testConfig(),
 			},
-			count:   114,
-			wantErr: false,
+			count:    114,
+			recursor: true,
+			wantErr:  false,
 		},
 		{
 			name: "recursor 4.3 invalid",
@@ -63,13 +65,41 @@ func Test_decodeStats(t *testing.T) {
 				},
 				config: testConfig(),
 			},
-			count:   114,
-			wantErr: true,
+			count:    114,
+			recursor: true,
+			wantErr:  true,
+		},
+		{
+			name: "auth 4.3 valid",
+			args: args{
+				response: &http.Response{
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
+				},
+				config: testConfig(),
+			},
+			count:    86,
+			recursor: false,
+			wantErr:  false,
+		},
+		{
+			name: "auth 4.3 invalid",
+			args: args{
+				response: &http.Response{
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
+				},
+				config: testConfig(),
+			},
+			count:    78,
+			recursor: false,
+			wantErr:  true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			counterCumulativeValues = make(map[string]int64)
+			if !tt.recursor {
+				tt.args.config.recursor = &tt.recursor
+			}
 			if err := decodeStats(tt.args.response, tt.args.config); (err != nil) != tt.wantErr {
 				t.Errorf("decodeStats() error = %v, wantErr %v", err, tt.wantErr)
 			}

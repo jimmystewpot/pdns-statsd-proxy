@@ -23,6 +23,7 @@ type pdnsClient struct {
 type PDNSStat struct {
 	Name  string      `json:"name"`
 	Type  string      `json:"type"`
+	Size  interface{} `json:"size"`
 	Value interface{} `json:"value"`
 }
 
@@ -37,6 +38,7 @@ func (pdns *pdnsClient) Initialise(config *Config) error {
 	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
 
 	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+
 	pdns.APIKey = *config.pdnsAPIKey
 	pdns.Client = &http.Client{Transport: transport}
 
@@ -125,8 +127,7 @@ func decodeStats(response *http.Response, config *Config) error {
 			if str, ok := stat.Value.(string); ok {
 				val, err := strconv.ParseInt(str, 10, 64)
 				if err != nil {
-					log.Warn("unable to convert value string to int64 in Poll()")
-					continue
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 				}
 				if _, ok := gaugeNames[stat.Name]; ok {
 					config.StatsChan <- Statistic{
@@ -162,6 +163,18 @@ func decodeStats(response *http.Response, config *Config) error {
 						Type:  counterCumulative,
 						Value: val,
 					}
+				}
+			}
+		case "RingStatisticItem":
+			if str, ok := stat.Size.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				config.StatsChan <- Statistic{
+					Name:  fmt.Sprintf(stat.Name),
+					Type:  gauge,
+					Value: val,
 				}
 			}
 		default:

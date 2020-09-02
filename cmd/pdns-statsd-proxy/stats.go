@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/quipo/statsd"
 	"go.uber.org/zap"
@@ -52,6 +53,7 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 // StatsWorker wraps a ticker for task execution.
 func StatsWorker(config *Config) {
 	log.Info("Starting statsd statistics worker...")
+	time.Sleep(time.Duration(10) * *config.interval)
 
 	for {
 		select {
