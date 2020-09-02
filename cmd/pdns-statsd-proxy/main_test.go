@@ -6,6 +6,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func TestWatchSignals(t *testing.T) {
@@ -23,4 +25,27 @@ func TestWatchSignals(t *testing.T) {
 
 	// this should block until the signal is received by the watch signals, otherwise the test fails.
 	<-config.Done
+}
+
+func Test_main(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			main()
+		})
+	}
+}
+
+// we init this only for testing to initalise the logging configuration.
+func init() {
+	debug := getEnvStr("DEBUG", "")
+	if *debug == "" {
+		log = zap.NewNop()
+	} else {
+		log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	}
 }
