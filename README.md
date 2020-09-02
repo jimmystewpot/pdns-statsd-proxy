@@ -6,7 +6,23 @@ Background: [PowerDNS](https://www.powerdns.com/) is a powerful open source DNS 
 
 This tool aims to provide a lightweight http to statsd bridge/proxy. It will query the PowerDNS API and emit the metrics in either statsd gauge or increments to a statsd server of your choice.
 
+# PowerDNS Support
+
+## recursor
+
+* 4.0
+* 4.1
+* 4.2
+* 4.3
+
+## authoritative
+
+tbd
+
+
 # Build
+
+Requires Docker to be installed as it builds within a container to output binaries in Linux elf format.
 
 ```make build```
 
@@ -24,9 +40,3 @@ Enable in systemctl
 
 ```systemctl enable pdns-stats-proxy```
 
-# PowerDNS Support
-
-* 4.0
-* 4.1
-* 4.2
-* 4.3

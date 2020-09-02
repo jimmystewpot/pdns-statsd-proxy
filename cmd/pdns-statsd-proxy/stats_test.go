@@ -85,7 +85,7 @@ func TestStatsWorker(t *testing.T) {
 			go func(config *Config, wg *sync.WaitGroup) {
 				counterCumulativeValues = make(map[string]int64)
 				jsonBody := &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("4.3.3"))),
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 				}
 				err := decodeStats(jsonBody, tt.args.config)
 				if err != nil {
@@ -97,7 +97,7 @@ func TestStatsWorker(t *testing.T) {
 			wg.Wait()
 			go StatsWorker(tt.args.config)
 
-			time.Sleep(time.Duration(500) * time.Millisecond)
+			time.Sleep(time.Duration(1500) * time.Millisecond)
 			close(tt.args.config.Done)
 		})
 	}

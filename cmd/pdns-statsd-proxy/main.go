@@ -33,7 +33,7 @@ func watchSignals(sig chan os.Signal, config *Config) {
 			close(config.Done)
 			err := stats.Close()
 			if err != nil {
-				log.Warn("shutting-down",
+				log.Fatal("error shutting down shutting down cleanly",
 					zap.Error(err),
 				)
 			}
@@ -60,9 +60,15 @@ func main() {
 	counterCumulativeValues = make(map[string]int64)
 
 	// initiate the powerdns client.
-	pdnsClient := NewPdnsClient(config)
+	pdnsClient := new(pdnsClient)
+	err = pdnsClient.Initialise(config)
+	if err != nil {
+		log.Fatal("unable to initialise powerdns client",
+			zap.Error(err),
+		)
+	}
 	// start background worker goroutines.
-	go DNSWorker(config, pdnsClient)
+	go pdnsClient.Worker(config)
 	go StatsWorker(config)
 
 	// handle signals correctly.
