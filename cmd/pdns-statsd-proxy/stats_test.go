@@ -56,6 +56,7 @@ func TestStatsWorker(t *testing.T) {
 			},
 		},
 	}
+	// setup a backgroun udp listener to accept the statsd datagrams/packets.
 	go func(config *Config) {
 		statsSrv, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", *config.statsPort))
 		if err != nil {
@@ -75,6 +76,7 @@ func TestStatsWorker(t *testing.T) {
 			}
 		}
 	}(testConfig())
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			stats, _ = NewStatsClient(tt.args.config)
@@ -84,10 +86,11 @@ func TestStatsWorker(t *testing.T) {
 			wg.Add(1)
 			go func(config *Config, wg *sync.WaitGroup) {
 				counterCumulativeValues = make(map[string]int64)
-				jsonBody := &http.Response{
+				responseBody := &http.Response{
 					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 				}
-				err := decodeStats(jsonBody, tt.args.config)
+				defer responseBody.Body.Close()
+				err := decodeStats(responseBody, tt.args.config)
 				if err != nil {
 					t.Error(err)
 				}

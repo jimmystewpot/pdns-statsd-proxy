@@ -18,7 +18,7 @@ const (
 )
 
 var (
-	log                     = zap.NewExample().Named(provider)
+	log                     *zap.Logger
 	stats                   *statsd.StatsdBuffer
 	gaugeNames              = gaugeMetrics()
 	counterCumulativeValues map[string]int64
@@ -33,7 +33,7 @@ func watchSignals(sig chan os.Signal, config *Config) {
 			close(config.Done)
 			err := stats.Close()
 			if err != nil {
-				log.Fatal("error shutting down shutting down cleanly",
+				log.Fatal("error shutting down cleanly",
 					zap.Error(err),
 				)
 			}
@@ -43,6 +43,12 @@ func watchSignals(sig chan os.Signal, config *Config) {
 }
 
 func main() {
+	logger, err := zap.NewProduction(zap.AddCaller())
+	if err != nil {
+		os.Exit(1)
+	}
+	log = logger.Named(provider)
+
 	config := new(Config)
 	if !validateConfiguration(config) {
 		log.Fatal("Unable to process configuration, missing flags")
@@ -51,7 +57,6 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 
 	// initiate the statsd client.
-	var err error
 	stats, err = NewStatsClient(config)
 	if err != nil {
 		log.Fatal("Unable to initiate statsd client")

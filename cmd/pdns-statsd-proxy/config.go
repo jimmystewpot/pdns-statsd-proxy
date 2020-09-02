@@ -38,18 +38,37 @@ func validateConfiguration(config *Config) bool {
 
 	config.StatsChan = make(chan Statistic, 1000)
 	config.Done = make(chan bool, 1)
-	if *config.statsHost == "" {
+
+	config.interval = timePtr(time.Duration(*interval) * time.Second)
+
+	if !checkStatsHost(config) {
 		return false
 	}
+	if !checkpdnsAPIKey(config) {
+		return false
+	}
+	return true
+}
+
+func checkStatsHost(config *Config) bool {
+	if *config.statsHost == "" {
+		log.Warn("unable to find the statsd host to send metrics to")
+		return false
+	}
+	return true
+}
+
+func checkpdnsAPIKey(config *Config) bool {
 	if *config.pdnsAPIKey == "" {
+		// check if its in the environment variables list.
 		config.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
+		// if its still empty we can't start.
 		if *config.pdnsAPIKey == "" {
 			log.Warn("unable to find PowerDNS API key via flags or environment variable PDNS_API_KEY")
 			return false
 		}
 	}
-	config.interval = timePtr(time.Duration(*interval) * time.Second)
-
+	// the key is not empty we should be able to start.
 	return true
 }
 

@@ -61,3 +61,73 @@ func Test_getEnvStr(t *testing.T) {
 		})
 	}
 }
+
+func Test_checkpdnsAPIKey(t *testing.T) {
+	type args struct {
+		config *Config
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Valid API Key",
+			args: args{
+				config: testConfig(),
+			},
+			want: true,
+		},
+		{
+			name: "No API Key",
+			args: args{
+				config: &Config{
+					pdnsAPIKey: stringPtr(""),
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := checkpdnsAPIKey(tt.args.config); got != tt.want {
+				t.Errorf("checkpdnsAPIKey() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_checkStatsHost(t *testing.T) {
+	type args struct {
+		config *Config
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "Valid Statsd Host",
+			args: args{
+				config: testConfig(),
+			},
+			want: true,
+		},
+		{
+			name: "No Statsd host",
+			args: args{
+				config: &Config{
+					statsHost: stringPtr(""),
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := checkStatsHost(tt.args.config); got != tt.want {
+				t.Errorf("checkStatsHost() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
