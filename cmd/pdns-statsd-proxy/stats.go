@@ -59,7 +59,7 @@ func StatsWorker(config *Config) {
 		case s := <-config.StatsChan:
 			err := processStats(s)
 			if err != nil {
-				log.Warn("error submitting statistics",
+				log.Error("error submitting statistics",
 					zap.String("metric_name", s.Name),
 					zap.String("host", *config.statsHost),
 					zap.String("port", *config.statsPort),
@@ -69,11 +69,11 @@ func StatsWorker(config *Config) {
 		case <-config.statsDone:
 			err := stats.Close()
 			if err != nil {
-				log.Warn("unable to cleanly close statsd buffer",
+				log.Error("unable to cleanly close statsd buffer",
 					zap.Error(err),
 				)
 			}
-			log.Warn("exiting from StatsWorker.")
+			log.Info("exiting from StatsWorker.")
 			close(config.statsDone)
 			close(config.StatsChan)
 			return
@@ -86,7 +86,7 @@ func processStats(s Statistic) error {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
-				log.Info("recovered from panic in statsd processStats()",
+				log.Error("recovered from panic in statsd processStats()",
 					zap.Error(err),
 				)
 			}
