@@ -17,7 +17,9 @@ type Config struct {
 	pdnsAPIKey *string
 	recursor   *bool
 	StatsChan  chan Statistic
-	Done       chan bool
+	Done       chan bool // close global
+	pdnsDone   chan bool // close the pdns worker
+	statsDone  chan bool // close the stats worker
 }
 
 // validateConfiguration confirms that the basic configuration parameters are correctly set.
@@ -38,6 +40,8 @@ func validateConfiguration(config *Config) bool {
 
 	config.StatsChan = make(chan Statistic, 1000)
 	config.Done = make(chan bool, 1)
+	config.pdnsDone = make(chan bool, 1)
+	config.statsDone = make(chan bool, 1)
 
 	config.interval = timePtr(time.Duration(*interval) * time.Second)
 
@@ -47,6 +51,9 @@ func validateConfiguration(config *Config) bool {
 	if !checkpdnsAPIKey(config) {
 		return false
 	}
+	// configuration is all okay, initialise the maps
+	counterCumulativeValues = make(map[string]int64)
+
 	return true
 }
 

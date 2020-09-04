@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net"
-	"time"
 
 	"github.com/quipo/statsd"
 	"go.uber.org/zap"
@@ -17,7 +16,6 @@ type Statistic struct {
 }
 
 // Abs function to ensure incrementing counters never submit negative values.
-
 func zeroMin(x int64) int64 {
 	if x < 0 {
 		return 0
@@ -28,6 +26,7 @@ func zeroMin(x int64) int64 {
 // NewStatsClient creates a buffered statsd client.
 func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 	var statsclient = new(statsd.StatsdClient)
+	var logger = new(logger)
 	host := net.JoinHostPort(*config.statsHost, *config.statsPort)
 
 	if *config.statsHost != "" {
@@ -43,8 +42,10 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 				zap.Error(err),
 			)
 		}
+		s := statsd.NewStatsdBuffer(*config.interval, statsclient)
+		s.Logger = logger
 
-		return statsd.NewStatsdBuffer(*config.interval, statsclient), nil
+		return s, nil
 	}
 	// return error
 	return &statsd.StatsdBuffer{}, fmt.Errorf("error, unable to create statsd buffer")
@@ -53,7 +54,6 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 // StatsWorker wraps a ticker for task execution.
 func StatsWorker(config *Config) {
 	log.Info("Starting statsd statistics worker...")
-	time.Sleep(time.Duration(10) * *config.interval)
 
 	for {
 		select {
@@ -66,8 +66,16 @@ func StatsWorker(config *Config) {
 					zap.Error(err),
 				)
 			}
-		case <-config.Done:
-			log.Warn("done closed, exiting from StatsWorker.")
+		case <-config.statsDone:
+			err := stats.Close()
+			if err != nil {
+				log.Warn("unable to cleanly close statsd buffer",
+					zap.Error(err),
+				)
+			}
+			log.Warn("exiting from StatsWorker.")
+			close(config.statsDone)
+			close(config.StatsChan)
 			return
 		}
 	}
@@ -95,15 +103,14 @@ func processStats(s Statistic) error {
 		var err error = nil
 		// skip sending first known value for a given incrementing metric because implicit prior value of zero
 		// results in ugly data spikes
-		if counterCumulativeValues[s.Name] != -1 {
-			err = stats.Incr(s.Name, zeroMin(s.Value-counterCumulativeValues[s.Name]))
-			if err != nil {
-
+		if val, ok := counterCumulativeValues[s.Name]; ok {
+			if val != -1 {
+				err = stats.Incr(s.Name, zeroMin(s.Value-counterCumulativeValues[s.Name]))
+				if err != nil {
+					return err
+				}
 			}
-		}
-		counterCumulativeValues[s.Name] = s.Value
-		if err != nil {
-			return err
+			counterCumulativeValues[s.Name] = s.Value
 		}
 	}
 	return nil

@@ -173,7 +173,7 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			// close the channel in the background to test a correct exit state.
 			go func(config *Config) {
 				time.Sleep(time.Duration(1000) * time.Millisecond)
-				close(config.Done)
+				config.pdnsDone <- true
 			}(tt.args.config)
 
 			go pdns.Worker(tt.args.config)
