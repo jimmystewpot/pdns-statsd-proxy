@@ -17,6 +17,8 @@ func testConfig() *Config {
 		recursor:   boolPtr(true),
 		StatsChan:  make(chan Statistic, 1000),
 		Done:       make(chan bool, 1),
+		pdnsDone:   make(chan bool, 1),
+		statsDone:  make(chan bool, 1),
 	}
 }
 

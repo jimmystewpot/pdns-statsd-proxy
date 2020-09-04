@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -30,39 +31,32 @@ func watchSignals(sig chan os.Signal, config *Config) {
 		select {
 		case <-sig:
 			log.Info("Caught signal about to cleanly exit.")
-			close(config.Done)
-			err := stats.Close()
-			if err != nil {
-				log.Fatal("error shutting down cleanly",
-					zap.Error(err),
-				)
-			}
+			config.pdnsDone <- true  // close downt he pdns worker first
+			config.statsDone <- true // close down the statsd worker
+			time.Sleep(time.Duration(1) * time.Second)
+			close(config.Done) // unblock the main func for a clean exit.
 			return
 		}
 	}
 }
 
 func main() {
-	logger, err := zap.NewProduction(zap.AddCaller())
+	err := initLogger()
 	if err != nil {
+		fmt.Println("unable to initalise logging: ", err)
 		os.Exit(1)
 	}
-	log = logger.Named(provider)
 
 	config := new(Config)
 	if !validateConfiguration(config) {
 		log.Fatal("Unable to process configuration, missing flags")
 	}
 
-	sigs := make(chan os.Signal, 1)
-
 	// initiate the statsd client.
 	stats, err = NewStatsClient(config)
 	if err != nil {
 		log.Fatal("Unable to initiate statsd client")
 	}
-
-	counterCumulativeValues = make(map[string]int64)
 
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
@@ -77,10 +71,14 @@ func main() {
 	go StatsWorker(config)
 
 	// handle signals correctly.
+	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
 	go watchSignals(sigs, config)
 
 	// wait until the Done channel is terminated before cleanly exiting.
 	<-config.Done
-	time.Sleep(5 * time.Second)
+	// make sure that the statsdone channel has closed gracefully
+	<-config.statsDone
+	// make sure the powerdns worker has closed gracefully.
+	<-config.pdnsDone
 }

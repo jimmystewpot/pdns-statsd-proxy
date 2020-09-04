@@ -12,15 +12,15 @@ import (
 	"go.uber.org/zap"
 )
 
-// DNSClient ...
+// pdnsClient stores the configuration for the powerdns client.
 type pdnsClient struct {
 	Host   string
 	APIKey string
 	Client *http.Client
 }
 
-// PDNSStat incoming statistics type
-type PDNSStat struct {
+// pdnsStat incoming statistics type
+type pdnsStat struct {
 	Name  string      `json:"name"`
 	Type  string      `json:"type"`
 	Size  interface{} `json:"size"`
@@ -65,8 +65,9 @@ func (pdns *pdnsClient) Worker(config *Config) {
 					zap.Error(err),
 				)
 			}
-		case <-config.Done:
-			log.Warn("done closed, exiting from DNSWorker.")
+		case <-config.pdnsDone:
+			log.Warn("exiting from pdns Worker.")
+			close(config.pdnsDone)
 			return
 		}
 	}
@@ -109,7 +110,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 func decodeStats(response *http.Response, config *Config) error {
 	defer response.Body.Close()
 
-	stats := make([]PDNSStat, 0)
+	stats := make([]pdnsStat, 0)
 
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
@@ -158,8 +159,13 @@ func decodeStats(response *http.Response, config *Config) error {
 					if err != nil {
 						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 					}
+					n := fmt.Sprintf("%s-%s", stat.Name, m["name"])
+					// populate the map with metrics names.
+					if _, ok := counterCumulativeValues[n]; !ok {
+						counterCumulativeValues[n] = -1
+					}
 					config.StatsChan <- Statistic{
-						Name:  fmt.Sprintf("%s-%s", stat.Name, m["name"]),
+						Name:  n,
 						Type:  counterCumulative,
 						Value: val,
 					}
@@ -170,6 +176,11 @@ func decodeStats(response *http.Response, config *Config) error {
 				val, err := strconv.ParseInt(str, 10, 64)
 				if err != nil {
 					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				n := fmt.Sprintf("%s", stat.Name)
+				// populate the map with metrics names.
+				if _, ok := counterCumulativeValues[n]; !ok {
+					counterCumulativeValues[n] = -1
 				}
 				config.StatsChan <- Statistic{
 					Name:  fmt.Sprintf(stat.Name),
