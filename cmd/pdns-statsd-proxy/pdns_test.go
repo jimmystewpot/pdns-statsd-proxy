@@ -96,7 +96,6 @@ func Test_decodeStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			counterCumulativeValues = make(map[string]int64)
 			if !tt.recursor {
 				tt.args.config.recursor = &tt.recursor
 			}
@@ -115,10 +114,11 @@ func Test_pdnsClient_Worker(t *testing.T) {
 		config *Config
 	}
 	tests := []struct {
-		name             string
-		args             args
-		testDataFile     string
-		testResponseCode int
+		name              string
+		args              args
+		testDataFile      string
+		testResponseCode  int
+		testAuthoritative bool
 	}{
 		{
 			name: "Good HTTP Response, Good Payload",
@@ -158,7 +158,7 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			pdns := testDNSClient(tt.args.config)
 
 			// setup a local http mock to simulate the powerdns api
-			listener, err := net.Listen("tcp", "127.0.0.1:8089")
+			listener, err := net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
 			if err != nil {
 				t.Errorf("got error trying to start mock listener: %s", err)
 			}

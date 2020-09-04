@@ -20,7 +20,7 @@ const (
 
 var (
 	log                     *zap.Logger
-	stats                   *statsd.StatsdBuffer
+	stats                   *statsd.StatsdClient
 	gaugeNames              = gaugeMetrics()
 	counterCumulativeValues map[string]int64
 )
