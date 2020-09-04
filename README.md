@@ -1,6 +1,7 @@
 # PowerDNS statistics to statsd bridge
 
 [![Build Status](https://travis-ci.org/jimmystewpot/pdns-statsd-proxy.png?branch=master)](https://travis-ci.org/jimmystewpot/pdns-statsd-proxy) [![codecov](https://codecov.io/gh/jimmystewpot/pdns-statsd-proxy/branch/master/graph/badge.svg)](https://codecov.io/gh/jimmystewpot/pdns-statsd-proxy) [![Known Vulnerabilities](https://snyk.io/test/github/jimmystewpot/pdns-stats-proxy/badge.svg?targetFile=package.json)](https://snyk.io/test/github/jimmystewpot/pdns-stats-proxy?targetFile=package.json)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fjimmystewpot%2Fpdns-statsd-proxy.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fjimmystewpot%2Fpdns-statsd-proxy?ref=badge_shield)
 
 Background: [PowerDNS](https://www.powerdns.com/) is a powerful open source DNS server that offers both recursive and authoritative packages. It has powerful statistics available via a HTTP RESTFul API, carbon protocol or via a cli tool. The problem with this is that not all metrics systems provide support for carbon or have http agents that support the PowerDNS API.
 
@@ -44,3 +45,6 @@ Enable in systemctl
 # Architecture
 
 This tool uses a worker model, a powerdns client will execute and poll, the statistics are then passed via channel to a statistics worker which then emits them via statsd.
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fjimmystewpot%2Fpdns-statsd-proxy.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fjimmystewpot%2Fpdns-statsd-proxy?ref=badge_large)
