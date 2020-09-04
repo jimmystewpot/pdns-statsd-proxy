@@ -44,3 +44,6 @@ Enable in systemctl
 # Architecture
 
 This tool uses a worker model, a powerdns client will execute and poll, the statistics are then passed via channel to a statistics worker which then emits them via statsd.
+
+## License
+

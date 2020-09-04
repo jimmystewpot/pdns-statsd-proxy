@@ -62,27 +62,27 @@
   {
     "name": "auth6-answers-slow",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1011"
   },
   {
     "name": "auth6-answers0-1",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "auth6-answers1-10",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "230"
   },
   {
     "name": "auth6-answers10-100",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "220"
   },
   {
     "name": "auth6-answers100-1000",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "230"
   },
   {
     "name": "cache-entries",
@@ -102,42 +102,42 @@
   {
     "name": "case-mismatches",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "chain-resends",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "50"
   },
   {
     "name": "client-parse-errors",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "concurrent-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "80"
   },
   {
     "name": "cpu-msec-thread-0",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "120"
   },
   {
     "name": "cpu-msec-thread-1",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "430"
   },
   {
     "name": "cpu-msec-thread-2",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "13"
   },
   {
     "name": "dlg-only-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "18"
   },
   {
     "name": "dnssec-authentic-data-queries",
@@ -147,32 +147,32 @@
   {
     "name": "dnssec-check-disabled-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "9"
   },
   {
     "name": "dnssec-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1930"
   },
   {
     "name": "dnssec-result-bogus",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "530"
   },
   {
     "name": "dnssec-result-indeterminate",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "550"
   },
   {
     "name": "dnssec-result-insecure",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "310"
   },
   {
     "name": "dnssec-result-nta",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "dnssec-result-secure",
@@ -187,62 +187,62 @@
   {
     "name": "dont-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "ecs-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "120"
   },
   {
     "name": "ecs-responses",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "120"
   },
   {
     "name": "edns-ping-matches",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "120"
   },
   {
     "name": "edns-ping-mismatches",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "120"
   },
   {
     "name": "empty-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "failed-host-entries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "fd-usage",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "ignored-packets",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "ipv6-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "ipv6-questions",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "malloc-bytes",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "1"
   },
   {
     "name": "max-cache-entries",
@@ -267,12 +267,12 @@
   {
     "name": "no-packet-error",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "noedns-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "20"
   },
   {
     "name": "noerror-answers",
@@ -282,17 +282,17 @@
   {
     "name": "noping-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "30"
   },
   {
     "name": "nsset-invalidations",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "30"
   },
   {
     "name": "nsspeeds-entries",
     "type": "StatisticItem",
-    "value": "6"
+    "value": "36"
   },
   {
     "name": "nxdomain-answers",
@@ -312,12 +312,12 @@
   {
     "name": "outgoing6-timeouts",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "over-capacity-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "packetcache-entries",
@@ -327,7 +327,7 @@
   {
     "name": "packetcache-hits",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "packetcache-misses",
@@ -337,17 +337,17 @@
   {
     "name": "policy-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "policy-result-custom",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "policy-result-drop",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "policy-result-noaction",
@@ -357,17 +357,17 @@
   {
     "name": "policy-result-nodata",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "policy-result-nxdomain",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "policy-result-truncate",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "qa-latency",
@@ -377,12 +377,12 @@
   {
     "name": "qname-min-fallback-success",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "query-pipe-full-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "10"
   },
   {
     "name": "questions",
@@ -397,32 +397,32 @@
   {
     "name": "rebalanced-queries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "resource-limits",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "security-status",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "server-parse-errors",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "servfail-answers",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "spoof-prevents",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "sys-msec",
@@ -432,67 +432,67 @@
   {
     "name": "tcp-client-overflow",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "60"
   },
   {
     "name": "tcp-clients",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "40"
   },
   {
     "name": "tcp-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "40"
   },
   {
     "name": "tcp-questions",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "40"
   },
   {
     "name": "throttle-entries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "throttled-out",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "throttled-outqueries",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "too-old-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "truncated-drops",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "unauthorized-tcp",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "unauthorized-udp",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "unexpected-packets",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "unreachables",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "uptime",
@@ -507,7 +507,7 @@
   {
     "name": "variable-responses",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-our-latency",
@@ -517,7 +517,7 @@
   {
     "name": "x-ourtime-slow",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-ourtime0-1",
@@ -527,27 +527,27 @@
   {
     "name": "x-ourtime1-2",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-ourtime16-32",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-ourtime2-4",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-ourtime4-8",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "x-ourtime8-16",
     "type": "StatisticItem",
-    "value": "0"
+    "value": "70"
   },
   {
     "name": "response-by-qtype",

@@ -4,9 +4,19 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 func testConfig() *Config {
+	// configuration is all okay, initialise the maps
+	counterCumulativeValues = make(map[string]int64)
+	debug := getEnvStr("DEBUG", "")
+	if *debug == "" {
+		log = zap.NewNop()
+	} else {
+		log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	}
 	return &Config{
 		statsHost:  stringPtr("127.0.0.1"),
 		statsPort:  stringPtr("8199"),

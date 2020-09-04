@@ -23,8 +23,8 @@ func zeroMin(x int64) int64 {
 	return x
 }
 
-// NewStatsClient creates a buffered statsd client.
-func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
+// NewStatsClient creates a statsd client.
+func NewStatsClient(config *Config) (*statsd.StatsdClient, error) {
 	var statsclient = new(statsd.StatsdClient)
 	var logger = new(logger)
 	host := net.JoinHostPort(*config.statsHost, *config.statsPort)
@@ -42,13 +42,12 @@ func NewStatsClient(config *Config) (*statsd.StatsdBuffer, error) {
 				zap.Error(err),
 			)
 		}
-		s := statsd.NewStatsdBuffer(*config.interval, statsclient)
-		s.Logger = logger
+		statsclient.Logger = logger
 
-		return s, nil
+		return statsclient, nil
 	}
 	// return error
-	return &statsd.StatsdBuffer{}, fmt.Errorf("error, unable to create statsd buffer")
+	return &statsd.StatsdClient{}, fmt.Errorf("error, unable to create statsd buffer")
 }
 
 // StatsWorker wraps a ticker for task execution.
@@ -61,6 +60,7 @@ func StatsWorker(config *Config) {
 			err := processStats(s)
 			if err != nil {
 				log.Warn("error submitting statistics",
+					zap.String("metric_name", s.Name),
 					zap.String("host", *config.statsHost),
 					zap.String("port", *config.statsPort),
 					zap.Error(err),

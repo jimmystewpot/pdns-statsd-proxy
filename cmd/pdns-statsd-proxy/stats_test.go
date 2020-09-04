@@ -8,6 +8,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/quipo/statsd"
 )
 
 func Test_gaugeMetrics(t *testing.T) {
@@ -58,7 +60,11 @@ func TestStatsWorker(t *testing.T) {
 	}
 	// setup a backgroun udp listener to accept the statsd datagrams/packets.
 	go func(config *Config) {
-		statsSrv, err := net.ListenPacket("udp", net.JoinHostPort("127.0.0.1", *config.statsPort))
+		udpAddr, err := net.ResolveUDPAddr("udp4", net.JoinHostPort(*config.statsHost, *config.statsPort))
+		if err != nil {
+			t.Error(err)
+		}
+		statsSrv, err := net.ListenUDP("udp4", udpAddr)
 		if err != nil {
 			t.Error(err)
 		}
@@ -68,8 +74,8 @@ func TestStatsWorker(t *testing.T) {
 			case <-config.Done:
 				return
 			default:
-				buf := make([]byte, 4096)
-				_, _, err := statsSrv.ReadFrom(buf)
+				buf := make([]byte, statsd.UDPPayloadSize)
+				_, _, err := statsSrv.ReadFromUDP(buf)
 				if err != nil {
 					continue
 				}
@@ -85,7 +91,6 @@ func TestStatsWorker(t *testing.T) {
 			// a data race.
 			wg.Add(1)
 			go func(config *Config, wg *sync.WaitGroup) {
-				counterCumulativeValues = make(map[string]int64)
 				for r := 0; r <= 3; r++ {
 					responseBody := &http.Response{
 						Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
@@ -99,10 +104,11 @@ func TestStatsWorker(t *testing.T) {
 				wg.Done()
 			}(tt.args.config, &wg)
 
+			// wait until the statistics have been sent.
 			wg.Wait()
 			go StatsWorker(tt.args.config)
 
-			time.Sleep(time.Duration(1500) * time.Millisecond)
+			time.Sleep(time.Duration(3500) * time.Millisecond)
 			tt.args.config.statsDone <- true
 		})
 	}
