@@ -54,19 +54,19 @@ func (pdns *pdnsClient) Worker(config *Config) {
 		case <-interval.C:
 			response, err := pdns.Poll()
 			if err != nil {
-				log.Warn("powerdns client",
+				log.Error("powerdns client",
 					zap.Error(err),
 				)
 				continue
 			}
 			err = decodeStats(response, config)
 			if err != nil {
-				log.Warn("powerdns decodeStats",
+				log.Error("powerdns decodeStats",
 					zap.Error(err),
 				)
 			}
 		case <-config.pdnsDone:
-			log.Warn("exiting from pdns Worker.")
+			log.Info("exiting from pdns Worker.")
 			close(config.pdnsDone)
 			return
 		}
@@ -78,7 +78,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {
-				log.Warn("recovered from panic in pdnsClient.Polll()",
+				log.Error("recovered from panic in pdnsClient.Polll()",
 					zap.Error(err),
 				)
 			}

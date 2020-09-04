@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // Config holds all the configuration required to start the service.
@@ -45,38 +47,47 @@ func validateConfiguration(config *Config) bool {
 
 	config.interval = timePtr(time.Duration(*interval) * time.Second)
 
-	if !checkStatsHost(config) {
+	statsHost, err := checkStatsHost(config)
+
+	if !statsHost {
+		log.Error("statsHost",
+			zap.Error(err),
+		)
 		return false
 	}
-	if !checkpdnsAPIKey(config) {
+
+	apiKey, err := checkpdnsAPIKey(config)
+	if !apiKey {
+		log.Error("checkdnsAPIKey",
+			zap.Error(err),
+		)
 		return false
 	}
+
 	// configuration is all okay, initialise the maps
 	counterCumulativeValues = make(map[string]int64)
 
 	return true
 }
 
-func checkStatsHost(config *Config) bool {
+func checkStatsHost(config *Config) (bool, error) {
 	if *config.statsHost == "" {
-		log.Warn("unable to find the statsd host to send metrics to")
-		return false
+		return false, fmt.Errorf("unable to find the statsd host to send metrics to")
 	}
-	return true
+	return true, nil
 }
 
-func checkpdnsAPIKey(config *Config) bool {
+func checkpdnsAPIKey(config *Config) (bool, error) {
 	if *config.pdnsAPIKey == "" {
 		// check if its in the environment variables list.
 		config.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
 		// if its still empty we can't start.
 		if *config.pdnsAPIKey == "" {
-			log.Warn("unable to find PowerDNS API key via flags or environment variable PDNS_API_KEY")
-			return false
+			return false, fmt.Errorf("unable to find PowerDNS API key via flags or environment variable PDNS_API_KEY")
 		}
 	}
 	// the key is not empty we should be able to start.
-	return true
+	return true, nil
 }
 
 // getEnvStr looks up an environment variable or returns the default value.

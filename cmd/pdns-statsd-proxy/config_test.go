@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -12,11 +13,18 @@ func testConfig() *Config {
 	// configuration is all okay, initialise the maps
 	counterCumulativeValues = make(map[string]int64)
 	debug := getEnvStr("DEBUG", "")
-	if *debug == "" {
-		log = zap.NewNop()
-	} else {
-		log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+
+	// for testing we need to set if this global variable is already set
+	// so we don't have a race condition.
+	if reflect.ValueOf(log).IsNil() {
+		if *debug == "" {
+			l, _ := zap.NewProduction()
+			log = l.Named(provider)
+		} else {
+			log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+		}
 	}
+
 	return &Config{
 		statsHost:  stringPtr("127.0.0.1"),
 		statsPort:  stringPtr("8199"),
@@ -102,7 +110,7 @@ func Test_checkpdnsAPIKey(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := checkpdnsAPIKey(tt.args.config); got != tt.want {
+			if got, _ := checkpdnsAPIKey(tt.args.config); got != tt.want {
 				t.Errorf("checkpdnsAPIKey() = %v, want %v", got, tt.want)
 			}
 		})
@@ -137,7 +145,7 @@ func Test_checkStatsHost(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := checkStatsHost(tt.args.config); got != tt.want {
+			if got, _ := checkStatsHost(tt.args.config); got != tt.want {
 				t.Errorf("checkStatsHost() = %v, want %v", got, tt.want)
 			}
 		})
