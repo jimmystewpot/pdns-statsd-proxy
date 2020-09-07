@@ -188,8 +188,28 @@ func decodeStats(response *http.Response, config *Config) error {
 					Value: val,
 				}
 			}
+
 		default:
-			continue
+			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
+			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
+			if str, ok := stat.Value.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				n := fmt.Sprintf("unknown.%s", stat.Type)
+				// populate the map with metrics names.
+				if _, ok := counterCumulativeValues[n]; !ok {
+					counterCumulativeValues[n] = -1
+				}
+
+				config.StatsChan <- Statistic{
+					Name:  n,
+					Type:  counterCumulative,
+					Value: val,
+				}
+				continue
+			}
 		}
 	}
 	return nil

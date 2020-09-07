@@ -15,6 +15,7 @@ import (
 
 func readpdnsTestData(version string) string {
 	vers := strings.ReplaceAll(version, ".", "_")
+	fmt.Println(vers)
 	jsonFile := fmt.Sprintf("pdns_response_test_data/%s.json", vers)
 	f, _ := ioutil.ReadFile(jsonFile)
 
@@ -91,6 +92,18 @@ func Test_decodeStats(t *testing.T) {
 			},
 			count:    78,
 			recursor: false,
+			wantErr:  true,
+		},
+		{
+			name: "recursor unkonwn metric type",
+			args: args{
+				response: &http.Response{
+					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
+				},
+				config: testConfig(),
+			},
+			count:    114,
+			recursor: true,
 			wantErr:  true,
 		},
 	}

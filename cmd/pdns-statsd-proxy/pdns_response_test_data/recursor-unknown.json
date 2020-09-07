@@ -1,0 +1,590 @@
+[
+  {
+    "name": "all-outqueries",
+    "type": "StatisticItem",
+    "value": "276"
+  },
+  {
+    "name": "answers-slow",
+    "type": "StatisticItem",
+    "value": "0"
+  },
+  {
+    "name": "answers0-1",
+    "type": "StatisticItem",
+    "value": "500"
+  },
+  {
+    "name": "answers1-10",
+    "type": "StatisticItem",
+    "value": "84"
+  },
+  {
+    "name": "answers10-100",
+    "type": "StatisticItem",
+    "value": "165"
+  },
+  {
+    "name": "answers100-1000",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "auth-zone-queries",
+    "type": "StatisticItem",
+    "value": "250"
+  },
+  {
+    "name": "auth4-answers-slow",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "auth4-answers0-1",
+    "type": "StatisticItem",
+    "value": "0"
+  },
+  {
+    "name": "auth4-answers1-10",
+    "type": "StatisticItem",
+    "value": "104"
+  },
+  {
+    "name": "auth4-answers10-100",
+    "type": "StatisticItem",
+    "value": "165"
+  },
+  {
+    "name": "auth4-answers100-1000",
+    "type": "StatisticItem",
+    "value": "6"
+  },
+  {
+    "name": "auth6-answers-slow",
+    "type": "StatisticItem",
+    "value": "1011"
+  },
+  {
+    "name": "auth6-answers0-1",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "auth6-answers1-10",
+    "type": "StatisticItem",
+    "value": "230"
+  },
+  {
+    "name": "auth6-answers10-100",
+    "type": "StatisticItem",
+    "value": "220"
+  },
+  {
+    "name": "auth6-answers100-1000",
+    "type": "StatisticItem",
+    "value": "230"
+  },
+  {
+    "name": "cache-entries",
+    "type": "StatisticItem",
+    "value": "345"
+  },
+  {
+    "name": "cache-hits",
+    "type": "StatisticItem",
+    "value": "250"
+  },
+  {
+    "name": "cache-misses",
+    "type": "StatisticItem",
+    "value": "500"
+  },
+  {
+    "name": "case-mismatches",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "chain-resends",
+    "type": "StatisticItem",
+    "value": "50"
+  },
+  {
+    "name": "client-parse-errors",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "concurrent-queries",
+    "type": "StatisticItem",
+    "value": "80"
+  },
+  {
+    "name": "cpu-msec-thread-0",
+    "type": "StatisticItem",
+    "value": "120"
+  },
+  {
+    "name": "cpu-msec-thread-1",
+    "type": "StatisticItem",
+    "value": "430"
+  },
+  {
+    "name": "cpu-msec-thread-2",
+    "type": "StatisticItem",
+    "value": "13"
+  },
+  {
+    "name": "dlg-only-drops",
+    "type": "StatisticItem",
+    "value": "18"
+  },
+  {
+    "name": "dnssec-authentic-data-queries",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "dnssec-check-disabled-queries",
+    "type": "StatisticItem",
+    "value": "9"
+  },
+  {
+    "name": "dnssec-queries",
+    "type": "StatisticItem",
+    "value": "1930"
+  },
+  {
+    "name": "dnssec-result-bogus",
+    "type": "StatisticItem",
+    "value": "530"
+  },
+  {
+    "name": "dnssec-result-indeterminate",
+    "type": "StatisticItem",
+    "value": "550"
+  },
+  {
+    "name": "dnssec-result-insecure",
+    "type": "StatisticItem",
+    "value": "310"
+  },
+  {
+    "name": "dnssec-result-nta",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "dnssec-result-secure",
+    "type": "StatisticItem",
+    "value": "4"
+  },
+  {
+    "name": "dnssec-validations",
+    "type": "StatisticItem",
+    "value": "4"
+  },
+  {
+    "name": "dont-outqueries",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "ecs-queries",
+    "type": "StatisticItem",
+    "value": "120"
+  },
+  {
+    "name": "ecs-responses",
+    "type": "StatisticItem",
+    "value": "120"
+  },
+  {
+    "name": "edns-ping-matches",
+    "type": "StatisticItem",
+    "value": "120"
+  },
+  {
+    "name": "edns-ping-mismatches",
+    "type": "StatisticItem",
+    "value": "120"
+  },
+  {
+    "name": "empty-queries",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "failed-host-entries",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "fd-usage",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "ignored-packets",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "ipv6-outqueries",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "ipv6-questions",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "malloc-bytes",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "max-cache-entries",
+    "type": "StatisticItem",
+    "value": "1000000"
+  },
+  {
+    "name": "max-mthread-stack",
+    "type": "StatisticItem",
+    "value": "6199"
+  },
+  {
+    "name": "max-packetcache-entries",
+    "type": "StatisticItem",
+    "value": "500000"
+  },
+  {
+    "name": "negcache-entries",
+    "type": "StatisticItem",
+    "value": "250"
+  },
+  {
+    "name": "no-packet-error",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "noedns-outqueries",
+    "type": "StatisticItem",
+    "value": "20"
+  },
+  {
+    "name": "noerror-answers",
+    "type": "StatisticItem",
+    "value": "250"
+  },
+  {
+    "name": "noping-outqueries",
+    "type": "StatisticItem",
+    "value": "30"
+  },
+  {
+    "name": "nsset-invalidations",
+    "type": "StatisticItem",
+    "value": "30"
+  },
+  {
+    "name": "nsspeeds-entries",
+    "type": "StatisticItem",
+    "value": "36"
+  },
+  {
+    "name": "nxdomain-answers",
+    "type": "StatisticItem",
+    "value": "500"
+  },
+  {
+    "name": "outgoing-timeouts",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "outgoing4-timeouts",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "outgoing6-timeouts",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "over-capacity-drops",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "packetcache-entries",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "packetcache-hits",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "packetcache-misses",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "policy-drops",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "policy-result-custom",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "policy-result-drop",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "policy-result-noaction",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "policy-result-nodata",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "policy-result-nxdomain",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "policy-result-truncate",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "qa-latency",
+    "type": "StatisticItem",
+    "value": "636"
+  },
+  {
+    "name": "qname-min-fallback-success",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "query-pipe-full-drops",
+    "type": "StatisticItem",
+    "value": "10"
+  },
+  {
+    "name": "questions",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "real-memory-usage",
+    "type": "StatisticItem",
+    "value": "11408506880"
+  },
+  {
+    "name": "rebalanced-queries",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "resource-limits",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "security-status",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "server-parse-errors",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "servfail-answers",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "spoof-prevents",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "sys-msec",
+    "type": "StatisticItem",
+    "value": "127"
+  },
+  {
+    "name": "tcp-client-overflow",
+    "type": "StatisticItem",
+    "value": "60"
+  },
+  {
+    "name": "tcp-clients",
+    "type": "StatisticItem",
+    "value": "40"
+  },
+  {
+    "name": "tcp-outqueries",
+    "type": "StatisticItem",
+    "value": "40"
+  },
+  {
+    "name": "tcp-questions",
+    "type": "StatisticItem",
+    "value": "40"
+  },
+  {
+    "name": "throttle-entries",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "throttled-out",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "throttled-outqueries",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "too-old-drops",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "truncated-drops",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "unauthorized-tcp",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "unauthorized-udp",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "unexpected-packets",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "unreachables",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "uptime",
+    "type": "StatisticItem",
+    "value": "142"
+  },
+  {
+    "name": "user-msec",
+    "type": "StatisticItem",
+    "value": "121"
+  },
+  {
+    "name": "variable-responses",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-our-latency",
+    "type": "StatisticItem",
+    "value": "1"
+  },
+  {
+    "name": "x-ourtime-slow",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-ourtime0-1",
+    "type": "StatisticItem",
+    "value": "750"
+  },
+  {
+    "name": "x-ourtime1-2",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-ourtime16-32",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-ourtime2-4",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-ourtime4-8",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "x-ourtime8-16",
+    "type": "StatisticItem",
+    "value": "70"
+  },
+  {
+    "name": "some-new-metric-name",
+    "type": "UnknownItem",
+    "value": "70"
+  },
+  {
+    "name": "response-by-qtype",
+    "type": "MapStatisticItem",
+    "value": [
+      {
+        "name": "A",
+        "value": "500"
+      },
+      {
+        "name": "PTR",
+        "value": "250"
+      }
+    ]
+  },
+  {
+    "name": "response-sizes",
+    "type": "MapStatisticItem",
+    "value": [
+      {
+        "name": "80",
+        "value": "250"
+      },
+      {
+        "name": "100",
+        "value": "500"
+      }
+    ]
+  },
+  {
+    "name": "response-by-rcode",
+    "type": "MapStatisticItem",
+    "value": []
+  }
+]
