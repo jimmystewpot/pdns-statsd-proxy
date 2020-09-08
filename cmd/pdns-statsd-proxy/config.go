@@ -24,15 +24,16 @@ type Config struct {
 	statsDone  chan bool // close the stats worker
 }
 
-// validateConfiguration confirms that the basic configuration parameters are correctly set.
-func validateConfiguration(config *Config) bool {
-	config.statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
-	config.statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
-	config.recursor = flag.Bool("recursor", true, "Query recursor statistics")
-	config.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
-	config.pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
-	config.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+func (c *Config) flags() bool {
+	c.statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	c.statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	c.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	c.pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	c.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	c.recursor = flag.Bool("recursor", true, "Query recursor statistics")
+
 	interval := flag.Int("interval", 15, "The interval to emit metrics in seconds")
+	c.interval = timePtr(time.Duration(*interval) * time.Second)
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] \n", os.Args[0])
@@ -40,14 +41,20 @@ func validateConfiguration(config *Config) bool {
 	}
 	flag.Parse()
 
-	config.StatsChan = make(chan Statistic, 1000)
-	config.Done = make(chan bool, 1)
-	config.pdnsDone = make(chan bool, 1)
-	config.statsDone = make(chan bool, 1)
+	return flag.Parsed()
+}
 
-	config.interval = timePtr(time.Duration(*interval) * time.Second)
+// Validate the configuration is correct before starting the service.
+func (c *Config) Validate() bool {
+	if !c.flags() {
+		return false
+	}
+	c.StatsChan = make(chan Statistic, 1000)
+	c.Done = make(chan bool, 1)
+	c.pdnsDone = make(chan bool, 1)
+	c.statsDone = make(chan bool, 1)
 
-	statsHost, err := checkStatsHost(config)
+	statsHost, err := checkStatsHost(c)
 
 	if !statsHost {
 		log.Error("statsHost",
@@ -56,7 +63,7 @@ func validateConfiguration(config *Config) bool {
 		return false
 	}
 
-	apiKey, err := checkpdnsAPIKey(config)
+	apiKey, err := checkpdnsAPIKey(c)
 	if !apiKey {
 		log.Error("checkdnsAPIKey",
 			zap.Error(err),

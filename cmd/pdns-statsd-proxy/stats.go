@@ -38,16 +38,14 @@ func NewStatsClient(config *Config) (*statsd.StatsdClient, error) {
 
 		err := statsclient.CreateSocket()
 		if err != nil {
-			log.Fatal("error creating statsd socket",
-				zap.Error(err),
-			)
+			return &statsd.StatsdClient{}, err
 		}
 		statsclient.Logger = logger
 
 		return statsclient, nil
 	}
 	// return error
-	return &statsd.StatsdClient{}, fmt.Errorf("error, unable to create statsd buffer")
+	return &statsd.StatsdClient{}, fmt.Errorf("error, no statsd host configured")
 }
 
 // StatsWorker wraps a ticker for task execution.
