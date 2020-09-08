@@ -191,7 +191,7 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			// setup a local http mock to simulate the powerdns api
 			listener, err := net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
 			if err != nil {
-				t.Errorf("got error trying to start mock listener: %s", err)
+				t.Errorf("got error trying to start mock http listener: %s", err)
 			}
 			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.testResponseCode)
