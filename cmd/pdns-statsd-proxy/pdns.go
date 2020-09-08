@@ -188,7 +188,6 @@ func decodeStats(response *http.Response, config *Config) error {
 					Value: val,
 				}
 			}
-
 		default:
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
@@ -208,6 +207,13 @@ func decodeStats(response *http.Response, config *Config) error {
 					Type:  counterCumulative,
 					Value: val,
 				}
+				version := response.Header.Get("Server")
+				log.Info("unkonwn metric type in api response",
+					zap.String("pdns_version", version),
+					zap.String("type", stat.Type),
+					zap.String("name", stat.Name),
+					zap.Int64("value", val),
+				)
 				continue
 			}
 		}

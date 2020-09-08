@@ -48,7 +48,7 @@ func main() {
 	}
 
 	config := new(Config)
-	if !validateConfiguration(config) {
+	if !config.Validate() {
 		log.Fatal("Unable to process configuration, missing flags")
 	}
 

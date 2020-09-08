@@ -113,3 +113,51 @@ func TestStatsWorker(t *testing.T) {
 		})
 	}
 }
+
+func TestNewStatsClient(t *testing.T) {
+	type args struct {
+		config *Config
+	}
+	tests := []struct {
+		name      string
+		args      args
+		statsHost string
+		wantErr   bool
+	}{
+		{
+			name: "Good Configuration",
+			args: args{
+				config: testConfig(),
+			},
+			statsHost: "127.0.0.1",
+			wantErr:   false,
+		},
+		{
+			name: "Bad Configuration - invalid host",
+			args: args{
+				config: testConfig(),
+			},
+			statsHost: "",
+			wantErr:   true,
+		},
+		{
+			name: "Bad Configuration - invalid ip",
+			args: args{
+				config: testConfig(),
+			},
+			statsHost: "a.b.c.d",
+			wantErr:   true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.args.config.statsHost = stringPtr(tt.statsHost)
+			_, err := NewStatsClient(tt.args.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewStatsClient() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+		})
+	}
+}

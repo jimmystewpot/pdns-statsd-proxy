@@ -15,7 +15,6 @@ import (
 
 func readpdnsTestData(version string) string {
 	vers := strings.ReplaceAll(version, ".", "_")
-	fmt.Println(vers)
 	jsonFile := fmt.Sprintf("pdns_response_test_data/%s.json", vers)
 	f, _ := ioutil.ReadFile(jsonFile)
 
@@ -34,6 +33,12 @@ func testDNSClient(config *Config) *pdnsClient {
 	return pdnsClient
 }
 
+func testHeader() http.Header {
+	header := make(http.Header, 0)
+	header.Set("Server", "PowerDNS/4.9.0")
+	return header
+}
+
 func Test_decodeStats(t *testing.T) {
 	type args struct {
 		response *http.Response
@@ -50,7 +55,8 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+					Header: testHeader(),
 				},
 				config: testConfig(),
 			},
@@ -62,7 +68,8 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
+					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
+					Header: testHeader(),
 				},
 				config: testConfig(),
 			},
@@ -74,7 +81,8 @@ func Test_decodeStats(t *testing.T) {
 			name: "auth 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
+					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
+					Header: testHeader(),
 				},
 				config: testConfig(),
 			},
@@ -86,7 +94,8 @@ func Test_decodeStats(t *testing.T) {
 			name: "auth 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
+					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
+					Header: testHeader(),
 				},
 				config: testConfig(),
 			},
@@ -98,13 +107,14 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor unkonwn metric type",
 			args: args{
 				response: &http.Response{
-					Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
+					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
+					Header: testHeader(),
 				},
 				config: testConfig(),
 			},
-			count:    114,
+			count:    115,
 			recursor: true,
-			wantErr:  true,
+			wantErr:  false,
 		},
 	}
 	for _, tt := range tests {
@@ -165,6 +175,14 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			testDataFile:     "recursor-4.3.3-bad",
 			testResponseCode: http.StatusUnauthorized,
 		},
+		{
+			name: "Good HTTP response, Good Payload Unknown Entry",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-unknown",
+			testResponseCode: http.StatusOK,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -178,6 +196,7 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.testResponseCode)
 				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Server", "PowerDNS/4.0.0-test")
 				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
 			}))
 			srv.Listener = listener
