@@ -140,8 +140,8 @@ func decodeStats(response *http.Response, config *Config) error {
 				}
 
 				// populate the map with metrics names.
-				if _, ok := counterCumulativeValues[stat.Name]; !ok {
-					counterCumulativeValues[stat.Name] = -1
+				if _, ok := config.counterCumulativeValues[stat.Name]; !ok {
+					config.counterCumulativeValues[stat.Name] = -1
 				}
 
 				config.StatsChan <- Statistic{
@@ -161,8 +161,8 @@ func decodeStats(response *http.Response, config *Config) error {
 					}
 					n := fmt.Sprintf("%s-%s", stat.Name, m["name"])
 					// populate the map with metrics names.
-					if _, ok := counterCumulativeValues[n]; !ok {
-						counterCumulativeValues[n] = -1
+					if _, ok := config.counterCumulativeValues[n]; !ok {
+						config.counterCumulativeValues[n] = -1
 					}
 					config.StatsChan <- Statistic{
 						Name:  n,
@@ -179,8 +179,8 @@ func decodeStats(response *http.Response, config *Config) error {
 				}
 				n := fmt.Sprintf("%s", stat.Name)
 				// populate the map with metrics names.
-				if _, ok := counterCumulativeValues[n]; !ok {
-					counterCumulativeValues[n] = -1
+				if _, ok := config.counterCumulativeValues[n]; !ok {
+					config.counterCumulativeValues[n] = -1
 				}
 				config.StatsChan <- Statistic{
 					Name:  fmt.Sprintf(stat.Name),
@@ -198,8 +198,8 @@ func decodeStats(response *http.Response, config *Config) error {
 				}
 				n := fmt.Sprintf("unknown.%s", stat.Type)
 				// populate the map with metrics names.
-				if _, ok := counterCumulativeValues[n]; !ok {
-					counterCumulativeValues[n] = -1
+				if _, ok := config.counterCumulativeValues[n]; !ok {
+					config.counterCumulativeValues[n] = -1
 				}
 
 				config.StatsChan <- Statistic{

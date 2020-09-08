@@ -11,35 +11,35 @@ import (
 
 // Config holds all the configuration required to start the service.
 type Config struct {
-	statsHost  *string
-	statsPort  *string
-	interval   *time.Duration
-	pdnsHost   *string
-	pdnsPort   *string
-	pdnsAPIKey *string
-	recursor   *bool
-	StatsChan  chan Statistic
-	Done       chan bool // close global
-	pdnsDone   chan bool // close the pdns worker
-	statsDone  chan bool // close the stats worker
+	statsHost               *string
+	statsPort               *string
+	interval                *time.Duration
+	pdnsHost                *string
+	pdnsPort                *string
+	pdnsAPIKey              *string
+	recursor                *bool
+	counterCumulativeValues map[string]int64
+	StatsChan               chan Statistic
+	done                    chan bool // close global
+	pdnsDone                chan bool // close the pdns worker
+	statsDone               chan bool // close the stats worker
 }
 
 func (c *Config) flags() bool {
-	c.statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
-	c.statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
-	c.pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
-	c.pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
-	c.pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
-	c.recursor = flag.Bool("recursor", true, "Query recursor statistics")
-
-	interval := flag.Int("interval", 15, "The interval to emit metrics in seconds")
-	c.interval = timePtr(time.Duration(*interval) * time.Second)
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] \n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.Parse()
+
+	c.statsHost = statsHost
+	c.statsPort = statsPort
+	c.pdnsHost = pdnsHost
+	c.pdnsPort = pdnsPort
+	c.pdnsAPIKey = pdnsAPIKey
+	c.recursor = recursor
+	c.interval = timePtr(time.Duration(*interval) * time.Second)
 
 	return flag.Parsed()
 }
@@ -50,7 +50,7 @@ func (c *Config) Validate() bool {
 		return false
 	}
 	c.StatsChan = make(chan Statistic, 1000)
-	c.Done = make(chan bool, 1)
+	c.done = make(chan bool, 1)
 	c.pdnsDone = make(chan bool, 1)
 	c.statsDone = make(chan bool, 1)
 
@@ -72,7 +72,7 @@ func (c *Config) Validate() bool {
 	}
 
 	// configuration is all okay, initialise the maps
-	counterCumulativeValues = make(map[string]int64)
+	c.counterCumulativeValues = make(map[string]int64)
 
 	return true
 }

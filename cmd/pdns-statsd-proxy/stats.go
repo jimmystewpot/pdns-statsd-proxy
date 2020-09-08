@@ -55,7 +55,7 @@ func StatsWorker(config *Config) {
 	for {
 		select {
 		case s := <-config.StatsChan:
-			err := processStats(s)
+			err := processStats(s, config.counterCumulativeValues)
 			if err != nil {
 				log.Error("error submitting statistics",
 					zap.String("metric_name", s.Name),
@@ -80,7 +80,7 @@ func StatsWorker(config *Config) {
 }
 
 // processStats emits the statistics via the statsd buffer.
-func processStats(s Statistic) error {
+func processStats(s Statistic, counterCumulativeValues map[string]int64) error {
 	defer func() {
 		if r := recover(); r != nil {
 			if err, ok := r.(error); ok {

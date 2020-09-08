@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -19,10 +20,19 @@ const (
 )
 
 var (
-	log                     *zap.Logger
-	stats                   *statsd.StatsdClient
-	gaugeNames              = gaugeMetrics()
-	counterCumulativeValues map[string]int64
+	log        *zap.Logger
+	stats      *statsd.StatsdClient
+	gaugeNames = gaugeMetrics()
+
+	// flag variables set as globals allows us to test various types of flags without needing to hack around
+	// the flags package.
+	statsHost  = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort  = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost   = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort   = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor   = flag.Bool("recursor", true, "Query recursor statistics")
+	interval   = flag.Int("interval", 15, "The interval to emit metrics in seconds")
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
@@ -33,8 +43,8 @@ func watchSignals(sig chan os.Signal, config *Config) {
 			log.Info("Caught signal about to cleanly exit.")
 			config.pdnsDone <- true  // close downt he pdns worker first
 			config.statsDone <- true // close down the statsd worker
-			time.Sleep(time.Duration(1) * time.Second)
-			close(config.Done) // unblock the main func for a clean exit.
+			time.Sleep(*config.interval)
+			close(config.done) // unblock the main func for a clean exit.
 			return
 		}
 	}
@@ -76,7 +86,7 @@ func main() {
 	go watchSignals(sigs, config)
 
 	// wait until the Done channel is terminated before cleanly exiting.
-	<-config.Done
+	<-config.done
 	// make sure that the statsdone channel has closed gracefully
 	<-config.statsDone
 	// make sure the powerdns worker has closed gracefully.

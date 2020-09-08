@@ -71,7 +71,7 @@ func TestStatsWorker(t *testing.T) {
 		defer statsSrv.Close()
 		for {
 			select {
-			case <-config.Done:
+			case <-config.done:
 				return
 			default:
 				buf := make([]byte, statsd.UDPPayloadSize)
@@ -110,6 +110,7 @@ func TestStatsWorker(t *testing.T) {
 
 			time.Sleep(time.Duration(3500) * time.Millisecond)
 			tt.args.config.statsDone <- true
+			tt.args.config.done <- true // close the udp listener.
 		})
 	}
 }

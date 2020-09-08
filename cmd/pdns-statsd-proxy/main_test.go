@@ -22,18 +22,5 @@ func TestWatchSignals(t *testing.T) {
 	}()
 
 	// this should block until the signal is received by the watch signals, otherwise the test fails.
-	<-config.Done
-}
-
-func Test_main(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			main()
-		})
-	}
+	<-config.done
 }

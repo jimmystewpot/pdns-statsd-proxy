@@ -10,8 +10,6 @@ import (
 )
 
 func testConfig() *Config {
-	// configuration is all okay, initialise the maps
-	counterCumulativeValues = make(map[string]int64)
 	debug := getEnvStr("DEBUG", "")
 
 	// for testing we need to set if this global variable is already set
@@ -26,17 +24,18 @@ func testConfig() *Config {
 	}
 
 	return &Config{
-		statsHost:  stringPtr("127.0.0.1"),
-		statsPort:  stringPtr("8199"),
-		interval:   timePtr(time.Duration(1) * time.Second),
-		pdnsHost:   stringPtr("127.0.0.1"),
-		pdnsPort:   stringPtr("8089"),
-		pdnsAPIKey: stringPtr("x-api-key"),
-		recursor:   boolPtr(true),
-		StatsChan:  make(chan Statistic, 1000),
-		Done:       make(chan bool, 1),
-		pdnsDone:   make(chan bool, 1),
-		statsDone:  make(chan bool, 1),
+		statsHost:               stringPtr("127.0.0.1"),
+		statsPort:               stringPtr("8199"),
+		interval:                timePtr(time.Duration(1) * time.Second),
+		pdnsHost:                stringPtr("127.0.0.1"),
+		pdnsPort:                stringPtr("8089"),
+		pdnsAPIKey:              stringPtr("x-api-key"),
+		recursor:                boolPtr(true),
+		counterCumulativeValues: make(map[string]int64),
+		StatsChan:               make(chan Statistic, 1000),
+		done:                    make(chan bool, 1),
+		pdnsDone:                make(chan bool, 1),
+		statsDone:               make(chan bool, 1),
 	}
 }
 
@@ -165,7 +164,7 @@ func TestConfig_Validate(t *testing.T) {
 		pdnsAPIKey *string
 		recursor   *bool
 		StatsChan  chan Statistic
-		Done       chan bool
+		done       chan bool
 		pdnsDone   chan bool
 		statsDone  chan bool
 	}
