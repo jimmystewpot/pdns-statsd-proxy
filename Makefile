@@ -5,7 +5,7 @@ export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/b
 
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
-DOCKER_IMAGE := golang:1.15-buster
+DOCKER_IMAGE := golang:1.16-stretch
 SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
 
@@ -18,15 +18,6 @@ get-synk:
 .PHONY: clean
 clean:
 	@echo $(shell docker images -qa -f 'dangling=true'|egrep '[a-z0-9]+' && docker rmi $(shell docker images -qa -f 'dangling=true'))
-
-#
-# dependency update. Look for updated versions and add them to vendoring. Or simply download the versions in the yaml file.
-#
-dep-update:
-	dep ensure -update
-
-dep-download:
-	dep ensure
 
 #
 # build the software
