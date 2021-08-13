@@ -121,7 +121,7 @@ func Test_CheckpdnsAPIKey(t *testing.T) {
 }
 
 // This test is only for a bad example as we test the working examples using testConfig()
-func TestConfig_Validate(t *testing.T) {
+func Test_ConfigValidate(t *testing.T) {
 	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
 
 	type fields struct {
@@ -173,7 +173,7 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func Test_checkStatsHost(t *testing.T) {
+func Test_CheckStatsHost(t *testing.T) {
 	type args struct {
 		config *Config
 	}
