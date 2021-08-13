@@ -1,13 +1,14 @@
 #!/usr/bin/make
 SHELL  := /bin/bash
 
-export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
 
+TOOL := pdns-statsd-proxy
+export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.16-stretch
 SYNK_IMAGE := snyk/snyk:golang
-TOOL := pdns-statsd-proxy
+INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./cmd/...
 
 get-golang:
@@ -20,12 +21,11 @@ get-synk:
 clean:
 	@echo $(shell docker images -qa -f 'dangling=true'|egrep '[a-z0-9]+' && docker rmi $(shell docker images -qa -f 'dangling=true'))
 
-lint: $(TEST_REPORT_DIR)
-GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
+lint:
 ifdef INTERACTIVE
 	golangci-lint run -v $(TEST_DIRS)
 else
-	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> lint-reports/checkstyle-lint.xml
+	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
 
@@ -42,20 +42,21 @@ build: get-golang
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
-build-all: test pdns-statsd-proxy
+build-all: deps test lint pdns-statsd-proxy
+
+deps:
+	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
 
 pdns-statsd-proxy:
 	@echo ""
 	@echo "***** Building PowerDNS statistics proxy *****"
-	GOOS=linux GOARCH=amd64 \
 	go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
-	GOOS=linux GOARCH=amd64 \
-	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic -json ./cmd/$(TOOL) 1> reports/testreport.json
 	@echo ""
 
 

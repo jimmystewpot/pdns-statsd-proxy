@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<checkstyle version="5.0">
+  <file name="cmd/pdns-statsd-proxy/log.go">
+    <error column="6" line="8" message="`Logger` is unused" severity="error" source="deadcode">
+    </error>
+  </file>
+  <file name="cmd/pdns-statsd-proxy/pdns.go">
+    <error column="3" line="208" message="nestingReduce: invert if cond, replace body with `continue`, move old body after the statement" severity="error" source="gocritic">
+    </error>
+  </file>
+</checkstyle>

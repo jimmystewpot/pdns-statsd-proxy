@@ -9,6 +9,10 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	localhost string = "127.0.0.1"
+)
+
 func testConfig() *Config {
 	debug := getEnvStr("DEBUG", "")
 
@@ -24,10 +28,10 @@ func testConfig() *Config {
 	}
 
 	return &Config{
-		statsHost:               stringPtr("127.0.0.1"),
+		statsHost:               stringPtr(localhost),
 		statsPort:               stringPtr("8199"),
 		interval:                timePtr(time.Duration(1) * time.Second),
-		pdnsHost:                stringPtr("127.0.0.1"),
+		pdnsHost:                stringPtr(localhost),
 		pdnsPort:                stringPtr("8089"),
 		pdnsAPIKey:              stringPtr("x-api-key"),
 		recursor:                boolPtr(true),
@@ -116,6 +120,59 @@ func Test_CheckpdnsAPIKey(t *testing.T) {
 	}
 }
 
+// This test is only for a bad example as we test the working examples using testConfig()
+func TestConfig_Validate(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+
+	type fields struct {
+		statsHost  *string
+		statsPort  *string
+		interval   *time.Duration
+		pdnsHost   *string
+		pdnsPort   *string
+		pdnsAPIKey *string
+		recursor   *bool
+		StatsChan  chan Statistic
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		want     fields
+		response bool
+		wantErr  bool
+	}{
+		{
+			name: "bad configuration",
+			fields: fields{
+				pdnsAPIKey: stringPtr(""),
+			},
+			want: fields{
+				statsHost:  stringPtr(localhost),
+				statsPort:  stringPtr("8125"),
+				interval:   timePtr(time.Duration(1) * time.Second),
+				pdnsHost:   stringPtr(localhost),
+				pdnsPort:   stringPtr("8080"),
+				pdnsAPIKey: stringPtr("x-api-key"),
+				recursor:   boolPtr(true),
+			},
+			response: false,
+			wantErr:  true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := new(Config)
+			if *tt.fields.pdnsAPIKey != "" {
+				os.Setenv("PDNS_API_KEY", *tt.fields.pdnsAPIKey)
+			}
+
+			if got := c.Validate(); got != tt.response {
+				t.Errorf("Config.Validate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func Test_checkStatsHost(t *testing.T) {
 	type args struct {
 		config *Config
@@ -146,59 +203,6 @@ func Test_checkStatsHost(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got, _ := checkStatsHost(tt.args.config); got != tt.want {
 				t.Errorf("checkStatsHost() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-// This test is only for a bad example as we test the working examples using testConfig()
-func TestConfig_Validate(t *testing.T) {
-	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
-
-	type fields struct {
-		statsHost  *string
-		statsPort  *string
-		interval   *time.Duration
-		pdnsHost   *string
-		pdnsPort   *string
-		pdnsAPIKey *string
-		recursor   *bool
-		StatsChan  chan Statistic
-	}
-	tests := []struct {
-		name     string
-		fields   fields
-		want     fields
-		response bool
-		wantErr  bool
-	}{
-		{
-			name: "bad configuration",
-			fields: fields{
-				pdnsAPIKey: stringPtr(""),
-			},
-			want: fields{
-				statsHost:  stringPtr("127.0.0.1"),
-				statsPort:  stringPtr("8125"),
-				interval:   timePtr(time.Duration(1) * time.Second),
-				pdnsHost:   stringPtr("127.0.0.1"),
-				pdnsPort:   stringPtr("8080"),
-				pdnsAPIKey: stringPtr("x-api-key"),
-				recursor:   boolPtr(true),
-			},
-			response: false,
-			wantErr:  true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := new(Config)
-			if *tt.fields.pdnsAPIKey != "" {
-				os.Setenv("PDNS_API_KEY", *tt.fields.pdnsAPIKey)
-			}
-
-			if got := c.Validate(); got != tt.response {
-				t.Errorf("Config.Validate() = %v, want %v", got, tt.want)
 			}
 		})
 	}
