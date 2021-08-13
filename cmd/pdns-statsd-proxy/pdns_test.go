@@ -125,7 +125,7 @@ func TestDecodeStats(t *testing.T) {
 	}
 }
 
-func TestPdnsClient_Worker(t *testing.T) {
+func TestPdnsClientWorker(t *testing.T) {
 	type args struct {
 		config *Config
 	}

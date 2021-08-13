@@ -12,7 +12,7 @@ import (
 	"github.com/quipo/statsd"
 )
 
-func Test_GaugeMetrics(t *testing.T) {
+func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name    string
 		want    string
