@@ -17,6 +17,7 @@ const (
 	// metric types
 	counterCumulative string = "counter_cumulative"
 	gauge             string = "gauge"
+	buffer            int    = 100
 )
 
 var (
@@ -37,23 +38,20 @@ var (
 
 // handle a graceful exit so that we do not lose data when we restart the service.
 func watchSignals(sig chan os.Signal, config *Config) {
-	for {
-		select {
-		case <-sig:
-			log.Info("Caught signal about to cleanly exit.")
-			config.pdnsDone <- true  // close downt he pdns worker first
-			config.statsDone <- true // close down the statsd worker
-			time.Sleep(*config.interval)
-			close(config.done) // unblock the main func for a clean exit.
-			return
-		}
-	}
+	s := <-sig
+	log.Info("Caught signal about to cleanly exit.",
+		zap.String("signal", s.String()),
+	)
+	config.pdnsDone <- true  // close downt he pdns worker first
+	config.statsDone <- true // close down the statsd worker
+	time.Sleep(*config.interval)
+	close(config.done) // unblock the main func for a clean exit.
 }
 
 func main() {
 	err := initLogger()
 	if err != nil {
-		fmt.Println("unable to initalise logging: ", err)
+		fmt.Println("unable to initialise logging: ", err)
 		os.Exit(1)
 	}
 
@@ -70,19 +68,15 @@ func main() {
 
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
-	err = pdnsClient.Initialise(config)
-	if err != nil {
-		log.Fatal("unable to initialise powerdns client",
-			zap.Error(err),
-		)
-	}
+	pdnsClient.Initialise(config)
+
 	// start background worker goroutines.
 	go pdnsClient.Worker(config)
-	go StatsWorker(config)
+	go statsWorker(config)
 
 	// handle signals correctly.
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go watchSignals(sigs, config)
 
 	// wait until the Done channel is terminated before cleanly exiting.
