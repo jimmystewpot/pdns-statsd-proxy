@@ -42,19 +42,17 @@ build: get-golang
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
-build-all: test pdns-statsd-proxy
+build-all: test lint pdns-statsd-proxy
 
 pdns-statsd-proxy:
 	@echo ""
 	@echo "***** Building PowerDNS statistics proxy *****"
-	GOOS=linux GOARCH=amd64 \
 	go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
-	GOOS=linux GOARCH=amd64 \
 	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
 	@echo ""
 
