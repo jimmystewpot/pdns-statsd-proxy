@@ -12,7 +12,7 @@ import (
 	"github.com/quipo/statsd"
 )
 
-func Test_gaugeMetrics(t *testing.T) {
+func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name    string
 		want    string
@@ -41,7 +41,7 @@ func Test_gaugeMetrics(t *testing.T) {
 	}
 }
 
-func Test_statsWorker(t *testing.T) {
+func TestStatsWorker(t *testing.T) {
 	var wg sync.WaitGroup
 
 	type args struct {
@@ -115,7 +115,7 @@ func Test_statsWorker(t *testing.T) {
 	}
 }
 
-func Test_NewStatsClient(t *testing.T) {
+func TestNewStatsClient(t *testing.T) {
 	type args struct {
 		config *Config
 	}

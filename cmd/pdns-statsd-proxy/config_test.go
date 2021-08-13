@@ -43,7 +43,7 @@ func testConfig() *Config {
 	}
 }
 
-func Test_GetEnvStr(t *testing.T) {
+func TestGetEnvStr(t *testing.T) {
 	type args struct {
 		name string
 		def  string
@@ -85,7 +85,7 @@ func Test_GetEnvStr(t *testing.T) {
 	}
 }
 
-func Test_CheckpdnsAPIKey(t *testing.T) {
+func TestCheckpdnsAPIKey(t *testing.T) {
 	type args struct {
 		config *Config
 	}
@@ -121,7 +121,7 @@ func Test_CheckpdnsAPIKey(t *testing.T) {
 }
 
 // This test is only for a bad example as we test the working examples using testConfig()
-func TestConfig_Validate(t *testing.T) {
+func TestConfigValidate(t *testing.T) {
 	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
 
 	type fields struct {
@@ -173,7 +173,7 @@ func TestConfig_Validate(t *testing.T) {
 	}
 }
 
-func Test_checkStatsHost(t *testing.T) {
+func TestCheckStatsHost(t *testing.T) {
 	type args struct {
 		config *Config
 	}
