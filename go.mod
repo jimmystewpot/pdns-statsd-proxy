@@ -12,4 +12,4 @@ require (
 
 replace go.uber.org/goleak => github.com/jimmystewpot/goleak v1.1.11-0.20210813005559-691160354723
 
-replace golang.org/x/text/encoding/unicode => golang.org/x/text/encoding/unicode 0.3.3
+replace golang.org/x/text => golang.org/x/text v0.3.7
