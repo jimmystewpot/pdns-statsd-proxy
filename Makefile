@@ -54,7 +54,7 @@ pdns-statsd-proxy:
 test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
-	go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic -json ./cmd/$(TOOL) 1> reports/testreport.json
 	@echo ""
 
 
