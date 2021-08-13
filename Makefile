@@ -25,7 +25,7 @@ GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.
 ifdef INTERACTIVE
 	golangci-lint run -v $(TEST_DIRS)
 else
-	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> lint-reports/checkstyle-lint.xml
+	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
 
@@ -53,7 +53,7 @@ pdns-statsd-proxy:
 test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
-	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic ./cmd/$(TOOL)
 	@echo ""
 
 
