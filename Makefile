@@ -1,13 +1,14 @@
 #!/usr/bin/make
 SHELL  := /bin/bash
 
-export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
 
+TOOL := pdns-statsd-proxy
+export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.16-stretch
 SYNK_IMAGE := snyk/snyk:golang
-TOOL := pdns-statsd-proxy
+INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./cmd/...
 
 get-golang:
@@ -20,8 +21,8 @@ get-synk:
 clean:
 	@echo $(shell docker images -qa -f 'dangling=true'|egrep '[a-z0-9]+' && docker rmi $(shell docker images -qa -f 'dangling=true'))
 
-lint: $(TEST_REPORT_DIR)
-GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
+lint:
+	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
 ifdef INTERACTIVE
 	golangci-lint run -v $(TEST_DIRS)
 else
