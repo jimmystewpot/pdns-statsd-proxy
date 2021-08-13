@@ -32,7 +32,7 @@ func testHeader() http.Header {
 	return header
 }
 
-func Test_decodeStats(t *testing.T) {
+func TestDecodeStats(t *testing.T) {
 	type args struct {
 		response *http.Response
 		config   *Config
@@ -125,7 +125,7 @@ func Test_decodeStats(t *testing.T) {
 	}
 }
 
-func Test_pdnsClient_Worker(t *testing.T) {
+func TestPdnsClient_Worker(t *testing.T) {
 	type args struct {
 		config *Config
 	}

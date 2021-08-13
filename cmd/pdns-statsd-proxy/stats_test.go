@@ -41,7 +41,7 @@ func Test_GaugeMetrics(t *testing.T) {
 	}
 }
 
-func Test_StatsWorker(t *testing.T) {
+func TestStatsWorker(t *testing.T) {
 	var wg sync.WaitGroup
 
 	type args struct {
@@ -115,7 +115,7 @@ func Test_StatsWorker(t *testing.T) {
 	}
 }
 
-func Test_NewStatsClient(t *testing.T) {
+func TestNewStatsClient(t *testing.T) {
 	type args struct {
 		config *Config
 	}
