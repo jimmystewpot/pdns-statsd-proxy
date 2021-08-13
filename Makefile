@@ -22,7 +22,6 @@ clean:
 	@echo $(shell docker images -qa -f 'dangling=true'|egrep '[a-z0-9]+' && docker rmi $(shell docker images -qa -f 'dangling=true'))
 
 lint:
-	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
 ifdef INTERACTIVE
 	golangci-lint run -v $(TEST_DIRS)
 else
@@ -43,7 +42,10 @@ build: get-golang
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
-build-all: test lint pdns-statsd-proxy
+build-all: deps test lint pdns-statsd-proxy
+
+deps:
+	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
 
 pdns-statsd-proxy:
 	@echo ""
