@@ -81,7 +81,7 @@ func Test_GetEnvStr(t *testing.T) {
 	}
 }
 
-func Test_GheckpdnsAPIKey(t *testing.T) {
+func Test_CheckpdnsAPIKey(t *testing.T) {
 	type args struct {
 		config *Config
 	}
