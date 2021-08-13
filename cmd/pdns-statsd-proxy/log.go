@@ -26,6 +26,7 @@ func initLogger() error {
 	if err != nil {
 		return err
 	}
+	// set the global var log to the zap logger.
 	log = logger.Named(provider)
 	return nil
 }

@@ -8,6 +8,7 @@ GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.16-stretch
 SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
+TEST_DIRS := ./cmd/...
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
@@ -18,6 +19,15 @@ get-synk:
 .PHONY: clean
 clean:
 	@echo $(shell docker images -qa -f 'dangling=true'|egrep '[a-z0-9]+' && docker rmi $(shell docker images -qa -f 'dangling=true'))
+
+lint: $(TEST_REPORT_DIR)
+GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
+ifdef INTERACTIVE
+	golangci-lint run -v $(TEST_DIRS)
+else
+	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> lint-reports/checkstyle-lint.xml
+endif
+.PHONY: lint
 
 #
 # build the software

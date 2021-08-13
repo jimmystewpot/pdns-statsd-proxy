@@ -39,7 +39,7 @@ func testConfig() *Config {
 	}
 }
 
-func Test_getEnvStr(t *testing.T) {
+func Test_GetEnvStr(t *testing.T) {
 	type args struct {
 		name string
 		def  string
@@ -81,7 +81,7 @@ func Test_getEnvStr(t *testing.T) {
 	}
 }
 
-func Test_checkpdnsAPIKey(t *testing.T) {
+func Test_CheckpdnsAPIKey(t *testing.T) {
 	type args struct {
 		config *Config
 	}
@@ -164,9 +164,6 @@ func TestConfig_Validate(t *testing.T) {
 		pdnsAPIKey *string
 		recursor   *bool
 		StatsChan  chan Statistic
-		done       chan bool
-		pdnsDone   chan bool
-		statsDone  chan bool
 	}
 	tests := []struct {
 		name     string

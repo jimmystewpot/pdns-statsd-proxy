@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 func readpdnsTestData(version string) string {
@@ -24,17 +22,12 @@ func readpdnsTestData(version string) string {
 func testDNSClient(config *Config) *pdnsClient {
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
-	err := pdnsClient.Initialise(config)
-	if err != nil {
-		log.Fatal("unable to initialise powerdns client",
-			zap.Error(err),
-		)
-	}
+	pdnsClient.Initialise(config)
 	return pdnsClient
 }
 
 func testHeader() http.Header {
-	header := make(http.Header, 0)
+	header := make(http.Header)
 	header.Set("Server", "PowerDNS/4.9.0")
 	return header
 }
@@ -104,7 +97,7 @@ func Test_decodeStats(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name: "recursor unkonwn metric type",
+			name: "recursor unknown metric type",
 			args: args{
 				response: &http.Response{
 					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
@@ -197,7 +190,7 @@ func Test_pdnsClient_Worker(t *testing.T) {
 				w.WriteHeader(tt.testResponseCode)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Server", "PowerDNS/4.0.0-test")
-				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
+				fmt.Fprint(w, readpdnsTestData(tt.testDataFile))
 			}))
 			srv.Listener = listener
 			srv.Start()

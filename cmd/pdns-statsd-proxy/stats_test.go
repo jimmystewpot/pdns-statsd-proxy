@@ -41,7 +41,7 @@ func Test_gaugeMetrics(t *testing.T) {
 	}
 }
 
-func TestStatsWorker(t *testing.T) {
+func Test_statsWorker(t *testing.T) {
 	var wg sync.WaitGroup
 
 	type args struct {
@@ -95,7 +95,7 @@ func TestStatsWorker(t *testing.T) {
 					responseBody := &http.Response{
 						Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 					}
-					err := decodeStats(responseBody, tt.args.config)
+					err := decodeStats(responseBody, config)
 					if err != nil {
 						t.Error(err)
 					}
@@ -106,7 +106,7 @@ func TestStatsWorker(t *testing.T) {
 
 			// wait until the statistics have been sent.
 			wg.Wait()
-			go StatsWorker(tt.args.config)
+			go statsWorker(tt.args.config)
 
 			time.Sleep(time.Duration(3500) * time.Millisecond)
 			tt.args.config.statsDone <- true
@@ -115,7 +115,7 @@ func TestStatsWorker(t *testing.T) {
 	}
 }
 
-func TestNewStatsClient(t *testing.T) {
+func Test_NewStatsClient(t *testing.T) {
 	type args struct {
 		config *Config
 	}
@@ -158,7 +158,6 @@ func TestNewStatsClient(t *testing.T) {
 				t.Errorf("NewStatsClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
 		})
 	}
 }
