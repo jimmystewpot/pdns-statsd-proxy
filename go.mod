@@ -9,3 +9,5 @@ require (
 	go.uber.org/zap v1.19.1-0.20210813012313-d8fd848d18f2
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
+
+replace go.uber.org/goleak => github.com/jimmystewpot/goleak v1.1.11-0.20210813005559-691160354723
