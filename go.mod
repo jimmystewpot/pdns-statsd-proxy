@@ -10,4 +10,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace go.uber.org/goleak => github.com/jimmystewpot/goleak v1.1.11-0.20210813005559-691160354723
+replace go.uber.org/goleak => github.com/jimmystewpot/goleak CVE-2020-9283
