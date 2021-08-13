@@ -10,8 +10,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace go.uber.org/goleak => github.com/jimmystewpot/goleak v1.1.11-0.20210813005559-691160354723
-
 replace golang.org/x/text => golang.org/x/text v0.3.7
 
 replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210812204632-0ba0e8f03122
