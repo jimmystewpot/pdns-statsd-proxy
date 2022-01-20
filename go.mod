@@ -6,7 +6,8 @@ require (
 	github.com/quipo/statsd v0.0.0-20180118161217-3d6a5565f314
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
-	go.uber.org/zap v1.19.1-0.20210813012313-d8fd848d18f2
+	go.uber.org/zap v1.20.0
+	golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d // indirect
 )
 
 replace golang.org/x/text => golang.org/x/text v0.3.7

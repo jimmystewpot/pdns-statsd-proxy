@@ -25,7 +25,7 @@ lint:
 ifdef INTERACTIVE
 	golangci-lint run -v $(TEST_DIRS)
 else
-	golangci-lint run --out-format=checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
+	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
 
