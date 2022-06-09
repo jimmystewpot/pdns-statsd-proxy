@@ -15,6 +15,8 @@ require (
 
 replace golang.org/x/text => golang.org/x/text v0.3.7
 
-replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20210812204632-0ba0e8f03122
+replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e
 
 replace golang.org/x/net => golang.org/x/net v0.0.0-20220114011407-0dd24b26b47d
+
+replace github.com/stretchr/testify => github.com/stretchr/testify v1.7.2
