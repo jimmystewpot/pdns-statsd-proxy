@@ -146,7 +146,7 @@ func decodeStats(response *http.Response, config *Config) error {
 			if str, ok := stat.Value.(string); ok {
 				val, err := strconv.ParseInt(str, base10, bitSize64)
 				if err != nil {
-					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+					return fmt.Errorf(conversionErr, str)
 				}
 				n := fmt.Sprintf("unknown.%s", stat.Type)
 				// populate the map with metrics names.
@@ -178,7 +178,7 @@ func statisticItem(stat pdnsStat, config *Config) error {
 	if str, ok := stat.Value.(string); ok {
 		val, err := strconv.ParseInt(str, base10, bitSize64)
 		if err != nil {
-			return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+			return fmt.Errorf(conversionErr, str)
 		}
 		if _, ok := gaugeNames[stat.Name]; ok {
 			config.StatsChan <- Statistic{
@@ -209,7 +209,7 @@ func mapStatisticItem(stat pdnsStat, config *Config) error {
 		if m, ok := i.(map[string]interface{}); ok {
 			val, err := strconv.ParseInt(m["value"].(string), base10, bitSize64)
 			if err != nil {
-				return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
+				return fmt.Errorf(conversionErr, m["value"])
 			}
 			n := fmt.Sprintf("%s-%s", stat.Name, m["name"])
 			// populate the map with metrics names.
@@ -230,7 +230,7 @@ func ringStatisticItem(stat pdnsStat, config *Config) error {
 	if str, ok := stat.Size.(string); ok {
 		val, err := strconv.ParseInt(str, base10, bitSize64)
 		if err != nil {
-			return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+			return fmt.Errorf(conversionErr, str)
 		}
 
 		// populate the map with metrics names.

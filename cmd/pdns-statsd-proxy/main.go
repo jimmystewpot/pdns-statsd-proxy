@@ -21,6 +21,7 @@ const (
 	base10            int    = 10
 	bitSize64         int    = 64
 	defaultInterval   int    = 15
+	conversionErr     string = "unable to convert %s value string to int64 in decodeStats()"
 )
 
 var (
