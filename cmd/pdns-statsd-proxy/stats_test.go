@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -93,7 +93,7 @@ func TestStatsWorker(t *testing.T) {
 			go func(config *Config, wg *sync.WaitGroup) {
 				for r := 0; r <= 3; r++ {
 					responseBody := &http.Response{
-						Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+						Body: io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 					}
 					err := decodeStats(responseBody, config)
 					if err != nil {

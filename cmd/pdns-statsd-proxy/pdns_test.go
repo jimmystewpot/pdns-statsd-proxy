@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 func readpdnsTestData(version string) string {
 	vers := strings.ReplaceAll(version, ".", "_")
 	jsonFile := fmt.Sprintf("pdns_response_test_data/%s.json", vers)
-	f, _ := ioutil.ReadFile(jsonFile)
+	f, _ := os.ReadFile(jsonFile)
 
 	return string(f)
 }
@@ -48,7 +49,7 @@ func TestDecodeStats(t *testing.T) {
 			name: "recursor 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -61,7 +62,7 @@ func TestDecodeStats(t *testing.T) {
 			name: "recursor 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -74,7 +75,7 @@ func TestDecodeStats(t *testing.T) {
 			name: "auth 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -87,7 +88,7 @@ func TestDecodeStats(t *testing.T) {
 			name: "auth 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -100,7 +101,7 @@ func TestDecodeStats(t *testing.T) {
 			name: "recursor unknown metric type",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -113,7 +114,7 @@ func TestDecodeStats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.recursor {
-				tt.args.config.recursor = &tt.recursor
+				tt.args.config.recursor = ptrBool(tt.recursor)
 			}
 			if err := decodeStats(tt.args.response, tt.args.config); (err != nil) != tt.wantErr {
 				t.Errorf("decodeStats() error = %v, wantErr %v", err, tt.wantErr)
@@ -208,4 +209,8 @@ func TestPdnsClientWorker(t *testing.T) {
 			srv.Close()
 		})
 	}
+}
+
+func ptrBool(b bool) *bool {
+	return &b
 }

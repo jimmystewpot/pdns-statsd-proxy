@@ -18,6 +18,9 @@ const (
 	counterCumulative string = "counter_cumulative"
 	gauge             string = "gauge"
 	buffer            int    = 100
+	base10            int    = 10
+	bitSize64         int    = 64
+	defaultInterval   int    = 15
 )
 
 var (
@@ -33,7 +36,7 @@ var (
 	pdnsPort   = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
 	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
 	recursor   = flag.Bool("recursor", true, "Query recursor statistics")
-	interval   = flag.Int("interval", 15, "The interval to emit metrics in seconds")
+	interval   = flag.Duration("interval", time.Duration(defaultInterval)*time.Second, "The interval to emit metrics in seconds")
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
