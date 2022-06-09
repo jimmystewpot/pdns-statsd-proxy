@@ -6,7 +6,7 @@ TOOL := pdns-statsd-proxy
 export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
-DOCKER_IMAGE := golang:1.17-stretch
+DOCKER_IMAGE := golang:1.18-bullseye
 SYNK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./cmd/...
@@ -45,7 +45,7 @@ build: get-golang
 build-all: deps test lint pdns-statsd-proxy
 
 deps:
-	GO111MODULE=on go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.32.2
+	GO111MODULE=on go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.46.1
 
 pdns-statsd-proxy:
 	@echo ""
