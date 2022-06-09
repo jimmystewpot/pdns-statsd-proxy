@@ -8,9 +8,9 @@ require (
 )
 
 require (
+	github.com/stretchr/testify v1.7.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	go.uber.org/multierr v1.8.1-0.20220531191214-aa8f15f0a1ac // indirect
 )
 
 replace golang.org/x/text => golang.org/x/text v0.3.7
