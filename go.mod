@@ -4,12 +4,13 @@ go 1.17
 
 require (
 	github.com/quipo/statsd v0.0.0-20180118161217-3d6a5565f314
-	go.uber.org/zap v1.20.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace golang.org/x/text => golang.org/x/text v0.3.7
