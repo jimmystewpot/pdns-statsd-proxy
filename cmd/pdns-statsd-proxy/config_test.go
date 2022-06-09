@@ -32,7 +32,37 @@ func testConfig() *Config {
 		statsPort:               stringPtr("8199"),
 		interval:                timePtr(time.Duration(1) * time.Second),
 		pdnsHost:                stringPtr(localhost),
-		pdnsPort:                stringPtr("8089"),
+		pdnsPort:                stringPtr("9999"),
+		pdnsAPIKey:              stringPtr("x-api-key"),
+		recursor:                boolPtr(true),
+		counterCumulativeValues: make(map[string]int64),
+		StatsChan:               make(chan Statistic, 1000),
+		done:                    make(chan bool, 1),
+		pdnsDone:                make(chan bool, 1),
+		statsDone:               make(chan bool, 1),
+	}
+}
+
+func testConfigErr() *Config {
+	debug := getEnvStr("DEBUG", "")
+
+	// for testing we need to set if this global variable is already set
+	// so we don't have a race condition.
+	if reflect.ValueOf(log).IsNil() {
+		if *debug == "" {
+			l, _ := zap.NewProduction()
+			log = l.Named(provider)
+		} else {
+			log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+		}
+	}
+
+	return &Config{
+		statsHost:               stringPtr(localhost),
+		statsPort:               stringPtr("8199"),
+		interval:                timePtr(time.Duration(1) * time.Second),
+		pdnsHost:                stringPtr(localhost),
+		pdnsPort:                stringPtr("8099"),
 		pdnsAPIKey:              stringPtr("x-api-key"),
 		recursor:                boolPtr(true),
 		counterCumulativeValues: make(map[string]int64),
