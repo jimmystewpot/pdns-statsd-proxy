@@ -105,6 +105,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	return response, nil
 }
 
+// decodeStats handles the statistic classing and fallback
 func decodeStats(response *http.Response, config *Config) error {
 	defer response.Body.Close()
 
@@ -143,32 +144,41 @@ func decodeStats(response *http.Response, config *Config) error {
 		default:
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
-			if str, ok := stat.Value.(string); ok {
-				val, err := strconv.ParseInt(str, base10, bitSize64)
-				if err != nil {
-					return fmt.Errorf(conversionErr, str)
-				}
-				n := fmt.Sprintf("unknown.%s", stat.Type)
-				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[n]; !ok {
-					config.counterCumulativeValues[n] = -1
-				}
-
-				config.StatsChan <- Statistic{
-					Name:  n,
-					Type:  counterCumulative,
-					Value: val,
-				}
-				version := response.Header.Get("Server")
-				log.Info("unknown metric type in api response",
-					zap.String("pdns_version", version),
-					zap.String("type", stat.Type),
-					zap.String("name", stat.Name),
-					zap.Int64("value", val),
-				)
-				continue
+			err := handleUnknownType(stat, config, response.Header.Get("Server"))
+			if err != nil {
+				return err
 			}
+			continue
 		}
+	}
+	return nil
+}
+
+// handleUnknownType captures unknown metrics types and handles them.
+func handleUnknownType(stat pdnsStat, config *Config, version string) error {
+	if str, ok := stat.Value.(string); ok {
+		val, err := strconv.ParseInt(str, base10, bitSize64)
+		if err != nil {
+			return fmt.Errorf(conversionErr, str)
+		}
+		n := fmt.Sprintf("unknown.%s", stat.Type)
+		// populate the map with metrics names.
+		if _, ok := config.counterCumulativeValues[n]; !ok {
+			config.counterCumulativeValues[n] = -1
+		}
+
+		config.StatsChan <- Statistic{
+			Name:  n,
+			Type:  counterCumulative,
+			Value: val,
+		}
+		log.Info("unknown metric type in api response",
+			zap.String("pdns_version", version),
+			zap.String("type", stat.Type),
+			zap.String("name", stat.Name),
+			zap.Int64("value", val),
+		)
+		return nil
 	}
 	return nil
 }
