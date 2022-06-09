@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -83,7 +83,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 		}
 	}()
 
-	request, err := http.NewRequest("GET", pdns.Host, nil)
+	request, err := http.NewRequest("GET", pdns.Host, http.NoBody)
 	if err != nil {
 		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
@@ -97,7 +97,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return &http.Response{}, fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
+		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
 	}
 
 	log.Info("successfully queried PowerDNS statistics")
@@ -110,7 +110,7 @@ func decodeStats(response *http.Response, config *Config) error {
 
 	stats := make([]pdnsStat, 0)
 
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func decodeStats(response *http.Response, config *Config) error {
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
 			if str, ok := stat.Value.(string); ok {
-				val, err := strconv.ParseInt(str, 10, 64)
+				val, err := strconv.ParseInt(str, base10, bitSize64)
 				if err != nil {
 					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 				}
@@ -176,7 +176,7 @@ func decodeStats(response *http.Response, config *Config) error {
 // statisticItem emits a statistic for basic metric types.
 func statisticItem(stat pdnsStat, config *Config) error {
 	if str, ok := stat.Value.(string); ok {
-		val, err := strconv.ParseInt(str, 10, 64)
+		val, err := strconv.ParseInt(str, base10, bitSize64)
 		if err != nil {
 			return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 		}
@@ -203,10 +203,11 @@ func statisticItem(stat pdnsStat, config *Config) error {
 	return nil
 }
 
+//nolint
 func mapStatisticItem(stat pdnsStat, config *Config) error {
 	for _, i := range stat.Value.([]interface{}) {
 		if m, ok := i.(map[string]interface{}); ok {
-			val, err := strconv.ParseInt(m["value"].(string), 10, 64)
+			val, err := strconv.ParseInt(m["value"].(string), base10, bitSize64)
 			if err != nil {
 				return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 			}
@@ -227,7 +228,7 @@ func mapStatisticItem(stat pdnsStat, config *Config) error {
 
 func ringStatisticItem(stat pdnsStat, config *Config) error {
 	if str, ok := stat.Size.(string); ok {
-		val, err := strconv.ParseInt(str, 10, 64)
+		val, err := strconv.ParseInt(str, base10, bitSize64)
 		if err != nil {
 			return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 		}

@@ -38,7 +38,7 @@ func (c *Config) flags() bool {
 	c.pdnsPort = pdnsPort
 	c.pdnsAPIKey = pdnsAPIKey
 	c.recursor = recursor
-	c.interval = timePtr(time.Duration(*interval) * time.Second)
+	c.interval = interval
 
 	return flag.Parsed()
 }
