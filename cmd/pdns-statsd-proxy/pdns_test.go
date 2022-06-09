@@ -129,6 +129,7 @@ func TestDecodeStats(t *testing.T) {
 func TestPdnsClientWorker(t *testing.T) {
 	type args struct {
 		config *Config
+		err    bool
 	}
 	tests := []struct {
 		name              string
@@ -177,16 +178,41 @@ func TestPdnsClientWorker(t *testing.T) {
 			testDataFile:     "recursor-unknown",
 			testResponseCode: http.StatusOK,
 		},
+		{
+			name: "Good HTTP response, Bad Payload Unknown Entry",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-unknown-bad",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Good HTTP response, Bad Server",
+			args: args{
+				config: testConfig(),
+				err:    true,
+			},
+			testDataFile:     "recursor-unknown-bad",
+			testResponseCode: http.StatusOK,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pdns := testDNSClient(tt.args.config)
 
 			// setup a local http mock to simulate the powerdns api
-			listener, err := net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
+			var listener net.Listener
+			var err error
+			switch tt.args.err {
+			case true:
+				listener, err = net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, "5555"))
+			case false:
+				listener, err = net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
+			}
 			if err != nil {
 				t.Errorf("got error trying to start mock http listener: %s", err)
 			}
+
 			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.testResponseCode)
 				w.Header().Set("Content-Type", "application/json")
