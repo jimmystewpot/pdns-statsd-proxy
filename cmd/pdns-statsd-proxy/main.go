@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -55,19 +54,21 @@ func watchSignals(sig chan os.Signal, config *Config) {
 func main() {
 	err := initLogger()
 	if err != nil {
-		fmt.Println("unable to initialise logging: ", err)
-		os.Exit(1)
+		log.Fatal("unable to initialise logging",
+			zap.Error(err))
 	}
 
 	config := new(Config)
 	if !config.Validate() {
-		log.Fatal("Unable to process configuration, missing flags")
+		log.Fatal("Unable to process configuration, missing flags",
+			zap.Error(err))
 	}
 
 	// initiate the statsd client.
 	stats, err = NewStatsClient(config)
 	if err != nil {
-		log.Fatal("Unable to initiate statsd client")
+		log.Fatal("Unable to initiate statsd client",
+			zap.Error(err))
 	}
 
 	// initiate the powerdns client.
