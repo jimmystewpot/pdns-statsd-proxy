@@ -11,6 +11,8 @@ require (
 	github.com/stretchr/testify v1.7.5 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.1-0.20220531191214-aa8f15f0a1ac // indirect
+	golang.org/x/net v0.2.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
 )
 
 replace golang.org/x/text => golang.org/x/text v0.3.7
