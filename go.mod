@@ -13,3 +13,7 @@ require (
 )
 
 replace golang.org/x/net => golang.org/x/net v0.0.0-20220906165146-f3363e06e74c
+
+replace gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
+
+replace golang.org/x/crypto => golang.org/x/crypto 0.0.0-20201216223049-8b5274cf687f
