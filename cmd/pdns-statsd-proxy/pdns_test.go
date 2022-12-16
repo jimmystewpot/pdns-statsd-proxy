@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,7 @@ import (
 func readpdnsTestData(version string) string {
 	vers := strings.ReplaceAll(version, ".", "_")
 	jsonFile := fmt.Sprintf("pdns_response_test_data/%s.json", vers)
-	f, _ := ioutil.ReadFile(jsonFile)
+	f, _ := os.ReadFile(jsonFile)
 
 	return string(f)
 }
@@ -27,12 +28,12 @@ func testDNSClient(config *Config) *pdnsClient {
 }
 
 func testHeader() http.Header {
-	header := make(http.Header, 0)
+	header := make(http.Header)
 	header.Set("Server", "PowerDNS/4.9.0")
 	return header
 }
 
-func Test_decodeStats(t *testing.T) {
+func TestDecodeStats(t *testing.T) {
 	type args struct {
 		response *http.Response
 		config   *Config
@@ -48,7 +49,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -61,7 +62,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -74,7 +75,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "auth 4.3 valid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -87,7 +88,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "auth 4.3 invalid",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("auth-4.3.0-bad"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -100,7 +101,7 @@ func Test_decodeStats(t *testing.T) {
 			name: "recursor unknown metric type",
 			args: args{
 				response: &http.Response{
-					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),
 					Header: testHeader(),
 				},
 				config: testConfig(),
@@ -113,7 +114,7 @@ func Test_decodeStats(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if !tt.recursor {
-				tt.args.config.recursor = &tt.recursor
+				tt.args.config.recursor = ptrBool(tt.recursor)
 			}
 			if err := decodeStats(tt.args.response, tt.args.config); (err != nil) != tt.wantErr {
 				t.Errorf("decodeStats() error = %v, wantErr %v", err, tt.wantErr)
@@ -125,9 +126,10 @@ func Test_decodeStats(t *testing.T) {
 	}
 }
 
-func Test_pdnsClient_Worker(t *testing.T) {
+func TestPdnsClientWorker(t *testing.T) {
 	type args struct {
 		config *Config
+		err    bool
 	}
 	tests := []struct {
 		name              string
@@ -176,21 +178,46 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			testDataFile:     "recursor-unknown",
 			testResponseCode: http.StatusOK,
 		},
+		{
+			name: "Good HTTP response, Bad Payload Unknown Entry",
+			args: args{
+				config: testConfig(),
+			},
+			testDataFile:     "recursor-unknown-bad",
+			testResponseCode: http.StatusOK,
+		},
+		{
+			name: "Good HTTP response, Bad Server",
+			args: args{
+				config: testConfig(),
+				err:    true,
+			},
+			testDataFile:     "recursor-unknown-bad",
+			testResponseCode: http.StatusOK,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pdns := testDNSClient(tt.args.config)
 
 			// setup a local http mock to simulate the powerdns api
-			listener, err := net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
+			var listener net.Listener
+			var err error
+			switch tt.args.err {
+			case true:
+				listener, err = net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, "5555"))
+			case false:
+				listener, err = net.Listen("tcp", net.JoinHostPort(*tt.args.config.pdnsHost, *tt.args.config.pdnsPort))
+			}
 			if err != nil {
 				t.Errorf("got error trying to start mock http listener: %s", err)
 			}
+
 			srv := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.testResponseCode)
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Server", "PowerDNS/4.0.0-test")
-				fmt.Fprintf(w, readpdnsTestData(tt.testDataFile))
+				fmt.Fprint(w, readpdnsTestData(tt.testDataFile))
 			}))
 			srv.Listener = listener
 			srv.Start()
@@ -208,4 +235,8 @@ func Test_pdnsClient_Worker(t *testing.T) {
 			srv.Close()
 		})
 	}
+}
+
+func ptrBool(b bool) *bool {
+	return &b
 }

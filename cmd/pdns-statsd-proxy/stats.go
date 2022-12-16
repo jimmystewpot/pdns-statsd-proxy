@@ -48,8 +48,8 @@ func NewStatsClient(config *Config) (*statsd.StatsdClient, error) {
 	return &statsd.StatsdClient{}, fmt.Errorf("error, no statsd host configured")
 }
 
-// StatsWorker wraps a ticker for task execution.
-func StatsWorker(config *Config) {
+// statsWorker wraps a ticker for task execution.
+func statsWorker(config *Config) {
 	log.Info("Starting statsd statistics worker...")
 
 	for {

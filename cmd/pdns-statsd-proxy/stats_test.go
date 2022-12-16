@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -12,7 +12,7 @@ import (
 	"github.com/quipo/statsd"
 )
 
-func Test_gaugeMetrics(t *testing.T) {
+func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name    string
 		want    string
@@ -93,9 +93,9 @@ func TestStatsWorker(t *testing.T) {
 			go func(config *Config, wg *sync.WaitGroup) {
 				for r := 0; r <= 3; r++ {
 					responseBody := &http.Response{
-						Body: ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
+						Body: io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3"))),
 					}
-					err := decodeStats(responseBody, tt.args.config)
+					err := decodeStats(responseBody, config)
 					if err != nil {
 						t.Error(err)
 					}
@@ -106,7 +106,7 @@ func TestStatsWorker(t *testing.T) {
 
 			// wait until the statistics have been sent.
 			wg.Wait()
-			go StatsWorker(tt.args.config)
+			go statsWorker(tt.args.config)
 
 			time.Sleep(time.Duration(3500) * time.Millisecond)
 			tt.args.config.statsDone <- true
@@ -158,7 +158,6 @@ func TestNewStatsClient(t *testing.T) {
 				t.Errorf("NewStatsClient() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
 		})
 	}
 }

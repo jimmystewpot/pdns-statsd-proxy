@@ -35,9 +35,7 @@ func (pdns *pdnsClient) Initialise(config *Config) {
 		DisableCompression: true,
 	}
 
-	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
-
-	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", net.JoinHostPort(*config.pdnsHost, *config.pdnsPort))
 
 	pdns.APIKey = *config.pdnsAPIKey
 	pdns.Client = &http.Client{Transport: transport}
