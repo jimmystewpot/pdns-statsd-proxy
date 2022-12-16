@@ -119,7 +119,6 @@ func TestDecodeStats(t *testing.T) {
 				},
 				config: testConfig(),
 			},
-			count:    112,
 			recursor: true,
 			wantErr:  true,
 		},
@@ -283,12 +282,11 @@ func Test_pdnsClient_Poll(t *testing.T) {
 				APIKey: tt.fields.APIKey,
 				Client: tt.fields.Client,
 			}
-			resp, err := pdns.Poll()
+			//nolint:bodyclose // this is testing the error handling working Polls are handled elsewhere in tests.
+			_, err := pdns.Poll()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("pdnsClient.Poll() error = %v, wantErr %v", err, tt.wantErr)
-				return
 			}
-			defer resp.Body.Close()
 		})
 	}
 }
