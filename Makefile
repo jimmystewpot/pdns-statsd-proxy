@@ -24,10 +24,10 @@ deps:
 
 lint:
 ifdef INTERACTIVE
-    $(LINT)
+	$(LINT)
 	golangci-lint run -v $(TEST_DIRS)
 else
-    $(LINT)
+	$(LINT)
 	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
