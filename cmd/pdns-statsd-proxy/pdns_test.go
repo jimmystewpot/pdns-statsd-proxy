@@ -249,10 +249,6 @@ func TestPdnsClientWorker(t *testing.T) {
 	}
 }
 
-func ptrBool(b bool) *bool {
-	return &b
-}
-
 func Test_pdnsClient_Poll(t *testing.T) {
 	type fields struct {
 		Host   string
@@ -289,4 +285,8 @@ func Test_pdnsClient_Poll(t *testing.T) {
 			}
 		})
 	}
+}
+
+func ptrBool(b bool) *bool {
+	return &b
 }

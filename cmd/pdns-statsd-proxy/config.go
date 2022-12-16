@@ -32,11 +32,18 @@ func (c *Config) flags() bool {
 	}
 	flag.Parse()
 
-	c.statsHost = statsHost
+	if c.statsHost == nil {
+		c.statsHost = statsHost
+	}
 	c.statsPort = statsPort
 	c.pdnsHost = pdnsHost
 	c.pdnsPort = pdnsPort
-	c.pdnsAPIKey = pdnsAPIKey
+	// if it's not set via flags or tests, check the environment variable for the API key.
+	if c.pdnsAPIKey == nil {
+		if *pdnsAPIKey == "" {
+			c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
+		}
+	}
 	c.recursor = recursor
 	c.interval = interval
 
@@ -49,52 +56,45 @@ func (c *Config) Validate() bool {
 		return false
 	}
 
-	c.StatsChan = make(chan Statistic, statsBufferSize)
-	c.done = make(chan bool, 1)
-	c.pdnsDone = make(chan bool, 1)
-	c.statsDone = make(chan bool, 1)
-
-	statsHost, err := checkStatsHost(c)
-
-	if !statsHost {
-		log.Error("statsHost",
+	err := c.CheckStatsHost()
+	if err != nil {
+		log.Error("CheckStatsHost",
 			zap.Error(err),
 		)
 		return false
 	}
 
-	apiKey, err := checkpdnsAPIKey(c)
-	if !apiKey {
+	err = c.CheckAPIKey()
+	if err != nil {
 		log.Error("checkdnsAPIKey",
 			zap.Error(err),
 		)
 		return false
 	}
 
-	// configuration is all okay, initialise the maps
+	// configuration is all okay, initialise the remaining internals
 	c.counterCumulativeValues = make(map[string]int64)
 
+	c.StatsChan = make(chan Statistic, statsBufferSize)
+	c.done = make(chan bool, 1)
+	c.pdnsDone = make(chan bool, 1)
+	c.statsDone = make(chan bool, 1)
 	return true
 }
 
-func checkStatsHost(config *Config) (bool, error) {
-	if *config.statsHost == "" {
-		return false, fmt.Errorf("unable to find the statsd host to send metrics to")
+func (c *Config) CheckStatsHost() error {
+	if *c.statsHost == "" {
+		return fmt.Errorf("no statsd host specified in the configuration")
 	}
-	return true, nil
+	return nil
 }
 
-func checkpdnsAPIKey(config *Config) (bool, error) {
-	if *config.pdnsAPIKey == "" {
-		// check if its in the environment variables list.
-		config.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
-		// if its still empty we can't start.
-		if *config.pdnsAPIKey == "" {
-			return false, fmt.Errorf("unable to find PowerDNS API key via flags or environment variable PDNS_API_KEY")
-		}
+func (c *Config) CheckAPIKey() error {
+	if *c.pdnsAPIKey == "" {
+		return fmt.Errorf("unable to find PowerDNS API key via flags or environment variable PDNS_API_KEY")
 	}
 	// the key is not empty we should be able to start.
-	return true, nil
+	return nil
 }
 
 // getEnvStr looks up an environment variable or returns the default value.
@@ -104,19 +104,4 @@ func getEnvStr(name string, def string) *string {
 		return &content
 	}
 	return &def
-}
-
-// timePtr returns a pointer for Time.Duration.
-func timePtr(t time.Duration) *time.Duration {
-	return &t
-}
-
-// stringPtr returns a pointer for an input string
-func stringPtr(s string) *string {
-	return &s
-}
-
-// boolPtr returns a pointer for an input boolean
-func boolPtr(b bool) *bool {
-	return &b
 }
