@@ -75,7 +75,7 @@ func main() {
 	pdnsClient.Initialise(config)
 	// start background worker goroutines.
 	go pdnsClient.Worker(config)
-	go StatsWorker(config)
+	go statsWorker(config)
 
 	// handle signals correctly.
 	sigs := make(chan os.Signal, 1)
