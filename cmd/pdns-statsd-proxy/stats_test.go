@@ -194,3 +194,29 @@ func Test_processStats(t *testing.T) {
 		})
 	}
 }
+
+func Test_zeroMin(t *testing.T) {
+	type args struct {
+		x int64
+	}
+	tests := []struct {
+		name string
+		args args
+		want int64
+	}{
+		{
+			name: "less than zero",
+			args: args{
+				x: -1,
+			},
+			want: 0,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := zeroMin(tt.args.x); got != tt.want {
+				t.Errorf("zeroMin() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

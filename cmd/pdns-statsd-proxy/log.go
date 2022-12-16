@@ -5,7 +5,8 @@ import (
 )
 
 // Logger replace the statsd default logger from Println to zap
-// nolint
+//
+//nolint:nolintlint //Logger is used to implement the logger interface for statsd.
 type Logger interface {
 	Println(v ...interface{})
 }
