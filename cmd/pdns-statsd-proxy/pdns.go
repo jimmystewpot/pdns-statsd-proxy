@@ -121,30 +121,9 @@ func decodeStats(response *http.Response, config *Config) error {
 	for i := 0; i < len(stats); i++ {
 		switch stats[i].Type {
 		case "StatisticItem":
-			if str, ok := stats[i].Value.(string); ok {
-				val, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
-				}
-				if _, ok := gaugeNames[stats[i].Name]; ok {
-					config.StatsChan <- Statistic{
-						Name:  stats[i].Name,
-						Type:  gauge,
-						Value: val,
-					}
-					continue
-				}
-
-				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
-					config.counterCumulativeValues[stats[i].Name] = -1
-				}
-
-				config.StatsChan <- Statistic{
-					Name:  stats[i].Name,
-					Type:  counterCumulative,
-					Value: val,
-				}
+			err = decodeStringStat(response, stats[i], config, false)
+			if err != nil {
+				return err
 			}
 		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
 			for _, stat := range stats[i].Value.([]interface{}) {
@@ -186,32 +165,46 @@ func decodeStats(response *http.Response, config *Config) error {
 		default:
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
-			if str, ok := stats[i].Value.(string); ok {
-				val, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
-				}
-				n := fmt.Sprintf("unknown.%s", stats[i].Type)
-				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[n]; !ok {
-					config.counterCumulativeValues[n] = -1
-				}
-
-				config.StatsChan <- Statistic{
-					Name:  n,
-					Type:  counterCumulative,
-					Value: val,
-				}
-				version := response.Header.Get("Server")
-				log.Info("unknown metric type in api response",
-					zap.String("pdns_version", version),
-					zap.String("type", stats[i].Type),
-					zap.String("name", stats[i].Name),
-					zap.Int64("value", val),
-				)
-				continue
+			err := decodeStringStat(response, stats[i], config, true)
+			if err != nil {
+				return err
 			}
 		}
+	}
+	return nil
+}
+
+func decodeStringStat(response *http.Response, stat pdnsStat, config *Config, unknown bool) error {
+	var n string
+	if str, ok := stat.Value.(string); ok {
+		val, err := strconv.ParseInt(str, 10, 64)
+		if err != nil {
+			return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+		}
+		switch unknown {
+		case true:
+			n = fmt.Sprintf("unknown.%s", stat.Type)
+		default:
+			n = stat.Name
+		}
+
+		// populate the map with metrics names.
+		if _, ok := config.counterCumulativeValues[n]; !ok {
+			config.counterCumulativeValues[n] = -1
+		}
+
+		config.StatsChan <- Statistic{
+			Name:  n,
+			Type:  counterCumulative,
+			Value: val,
+		}
+		version := response.Header.Get("Server")
+		log.Info("unknown metric type in api response",
+			zap.String("pdns_version", version),
+			zap.String("type", stat.Type),
+			zap.String("name", stat.Name),
+			zap.Int64("value", val),
+		)
 	}
 	return nil
 }
