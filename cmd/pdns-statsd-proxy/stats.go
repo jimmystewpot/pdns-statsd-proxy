@@ -98,7 +98,7 @@ func processStats(s Statistic, counterCumulativeValues map[string]int64) error {
 			return err
 		}
 	case counterCumulative: // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
-		var err error = nil
+		var err error
 		// skip sending first known value for a given incrementing metric because implicit prior value of zero
 		// results in ugly data spikes
 		if val, ok := counterCumulativeValues[s.Name]; ok {

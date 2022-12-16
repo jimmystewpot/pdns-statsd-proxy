@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 )
 
 func readpdnsTestData(version string) string {
@@ -24,12 +22,7 @@ func readpdnsTestData(version string) string {
 func testDNSClient(config *Config) *pdnsClient {
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
-	err := pdnsClient.Initialise(config)
-	if err != nil {
-		log.Fatal("unable to initialise powerdns client",
-			zap.Error(err),
-		)
-	}
+	pdnsClient.Initialise(config)
 	return pdnsClient
 }
 
@@ -104,7 +97,7 @@ func Test_decodeStats(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name: "recursor unkonwn metric type",
+			name: "recursor unknown metric type",
 			args: args{
 				response: &http.Response{
 					Body:   ioutil.NopCloser(strings.NewReader(readpdnsTestData("recursor-unknown"))),

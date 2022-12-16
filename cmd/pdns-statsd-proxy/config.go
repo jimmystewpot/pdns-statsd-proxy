@@ -26,7 +26,6 @@ type Config struct {
 }
 
 func (c *Config) flags() bool {
-
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] \n", os.Args[0])
 		flag.PrintDefaults()
@@ -39,7 +38,7 @@ func (c *Config) flags() bool {
 	c.pdnsPort = pdnsPort
 	c.pdnsAPIKey = pdnsAPIKey
 	c.recursor = recursor
-	c.interval = timePtr(time.Duration(*interval) * time.Second)
+	c.interval = interval
 
 	return flag.Parsed()
 }
@@ -49,7 +48,7 @@ func (c *Config) Validate() bool {
 	if !c.flags() {
 		return false
 	}
-	c.StatsChan = make(chan Statistic, 1000)
+	c.StatsChan = make(chan Statistic, statsBufferSize)
 	c.done = make(chan bool, 1)
 	c.pdnsDone = make(chan bool, 1)
 	c.statsDone = make(chan bool, 1)

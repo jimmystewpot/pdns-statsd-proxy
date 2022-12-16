@@ -15,8 +15,10 @@ import (
 const (
 	provider string = "pdns-stats-proxy"
 	// metric types
-	counterCumulative string = "counter_cumulative"
-	gauge             string = "gauge"
+	counterCumulative string        = "counter_cumulative"
+	gauge             string        = "gauge"
+	statsBufferSize   int           = 1000
+	defaultInterval   time.Duration = 15 * time.Second
 )
 
 var (
@@ -32,7 +34,7 @@ var (
 	pdnsPort   = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
 	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
 	recursor   = flag.Bool("recursor", true, "Query recursor statistics")
-	interval   = flag.Int("interval", 15, "The interval to emit metrics in seconds")
+	interval   = flag.Duration("interval", defaultInterval, "The interval to emit metrics in seconds")
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
@@ -53,7 +55,7 @@ func watchSignals(sig chan os.Signal, config *Config) {
 func main() {
 	err := initLogger()
 	if err != nil {
-		fmt.Println("unable to initalise logging: ", err)
+		fmt.Println("unable to initialise logging: ", err)
 		os.Exit(1)
 	}
 
@@ -70,19 +72,14 @@ func main() {
 
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
-	err = pdnsClient.Initialise(config)
-	if err != nil {
-		log.Fatal("unable to initialise powerdns client",
-			zap.Error(err),
-		)
-	}
+	pdnsClient.Initialise(config)
 	// start background worker goroutines.
 	go pdnsClient.Worker(config)
 	go StatsWorker(config)
 
 	// handle signals correctly.
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go watchSignals(sigs, config)
 
 	// wait until the Done channel is terminated before cleanly exiting.

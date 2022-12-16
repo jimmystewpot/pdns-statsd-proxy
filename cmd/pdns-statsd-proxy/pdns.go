@@ -28,7 +28,7 @@ type pdnsStat struct {
 }
 
 // Initialise a new powerdns client.
-func (pdns *pdnsClient) Initialise(config *Config) error {
+func (pdns *pdnsClient) Initialise(config *Config) {
 	transport := &http.Transport{
 		MaxIdleConns:       10,
 		IdleConnTimeout:    *config.interval * 4,
@@ -41,8 +41,6 @@ func (pdns *pdnsClient) Initialise(config *Config) error {
 
 	pdns.APIKey = *config.pdnsAPIKey
 	pdns.Client = &http.Client{Transport: transport}
-
-	return nil
 }
 
 // Worker wraps a ticker for task execution to query the powerdns API.
@@ -85,7 +83,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 		}
 	}()
 
-	request, err := http.NewRequest("GET", pdns.Host, nil)
+	request, err := http.NewRequest("GET", pdns.Host, http.NoBody)
 	if err != nil {
 		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
@@ -99,7 +97,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return &http.Response{}, fmt.Errorf(fmt.Sprintf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode))
+		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
 	}
 
 	log.Info("successfully queried PowerDNS statistics")
@@ -122,17 +120,17 @@ func decodeStats(response *http.Response, config *Config) error {
 		return err
 	}
 
-	for _, stat := range stats {
-		switch stat.Type {
+	for i := 0; i < len(stats); i++ {
+		switch stats[i].Type {
 		case "StatisticItem":
-			if str, ok := stat.Value.(string); ok {
+			if str, ok := stats[i].Value.(string); ok {
 				val, err := strconv.ParseInt(str, 10, 64)
 				if err != nil {
 					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 				}
-				if _, ok := gaugeNames[stat.Name]; ok {
+				if _, ok := gaugeNames[stats[i].Name]; ok {
 					config.StatsChan <- Statistic{
-						Name:  stat.Name,
+						Name:  stats[i].Name,
 						Type:  gauge,
 						Value: val,
 					}
@@ -140,26 +138,26 @@ func decodeStats(response *http.Response, config *Config) error {
 				}
 
 				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[stat.Name]; !ok {
-					config.counterCumulativeValues[stat.Name] = -1
+				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
+					config.counterCumulativeValues[stats[i].Name] = -1
 				}
 
 				config.StatsChan <- Statistic{
-					Name:  stat.Name,
+					Name:  stats[i].Name,
 					Type:  counterCumulative,
 					Value: val,
 				}
 			}
 		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
-
-			for _, i := range stat.Value.([]interface{}) {
-
-				if m, ok := i.(map[string]interface{}); ok {
+			for _, stat := range stats[i].Value.([]interface{}) {
+				if m, ok := stat.(map[string]interface{}); !ok {
+					continue
+				} else {
 					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
 					if err != nil {
 						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 					}
-					n := fmt.Sprintf("%s-%s", stat.Name, m["name"])
+					n := fmt.Sprintf("%s-%s", stats[i].Name, m["name"])
 					// populate the map with metrics names.
 					if _, ok := config.counterCumulativeValues[n]; !ok {
 						config.counterCumulativeValues[n] = -1
@@ -172,18 +170,17 @@ func decodeStats(response *http.Response, config *Config) error {
 				}
 			}
 		case "RingStatisticItem":
-			if str, ok := stat.Size.(string); ok {
+			if str, ok := stats[i].Size.(string); ok {
 				val, err := strconv.ParseInt(str, 10, 64)
 				if err != nil {
 					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 				}
-				n := fmt.Sprintf("%s", stat.Name)
 				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[n]; !ok {
-					config.counterCumulativeValues[n] = -1
+				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
+					config.counterCumulativeValues[stats[i].Name] = -1
 				}
 				config.StatsChan <- Statistic{
-					Name:  fmt.Sprintf(stat.Name),
+					Name:  stats[i].Name,
 					Type:  gauge,
 					Value: val,
 				}
@@ -191,12 +188,12 @@ func decodeStats(response *http.Response, config *Config) error {
 		default:
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
-			if str, ok := stat.Value.(string); ok {
+			if str, ok := stats[i].Value.(string); ok {
 				val, err := strconv.ParseInt(str, 10, 64)
 				if err != nil {
 					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
 				}
-				n := fmt.Sprintf("unknown.%s", stat.Type)
+				n := fmt.Sprintf("unknown.%s", stats[i].Type)
 				// populate the map with metrics names.
 				if _, ok := config.counterCumulativeValues[n]; !ok {
 					config.counterCumulativeValues[n] = -1
@@ -208,10 +205,10 @@ func decodeStats(response *http.Response, config *Config) error {
 					Value: val,
 				}
 				version := response.Header.Get("Server")
-				log.Info("unkonwn metric type in api response",
+				log.Info("unknown metric type in api response",
 					zap.String("pdns_version", version),
-					zap.String("type", stat.Type),
-					zap.String("name", stat.Name),
+					zap.String("type", stats[i].Type),
+					zap.String("name", stats[i].Name),
 					zap.Int64("value", val),
 				)
 				continue

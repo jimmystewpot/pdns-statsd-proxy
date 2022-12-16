@@ -8,6 +8,15 @@ GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.16-stretch
 SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
+INTERACTIVE := $(shell [ -t 0 ] && echo 1)
+
+lint:
+ifdef INTERACTIVE
+	golangci-lint run -v $(TEST_DIRS)
+else
+	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
+endif
+.PHONY: lint
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
