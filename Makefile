@@ -10,6 +10,8 @@ SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 
+LINT := $(shell which golangci-lint)
+
 build-all: deps lint clean-arch test pdns-statsd-proxy
 
 deps:
@@ -22,8 +24,10 @@ deps:
 
 lint:
 ifdef INTERACTIVE
+    $(LINT)
 	golangci-lint run -v $(TEST_DIRS)
 else
+    $(LINT)
 	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
