@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -35,9 +35,7 @@ func (pdns *pdnsClient) Initialise(config *Config) {
 		DisableCompression: true,
 	}
 
-	hostPort := net.JoinHostPort(*config.pdnsHost, *config.pdnsPort)
-
-	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", hostPort)
+	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", net.JoinHostPort(*config.pdnsHost, *config.pdnsPort))
 
 	pdns.APIKey = *config.pdnsAPIKey
 	pdns.Client = &http.Client{Transport: transport}
@@ -105,13 +103,12 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	return response, nil
 }
 
-// decodeStats handles the statistic classing and fallback
 func decodeStats(response *http.Response, config *Config) error {
 	defer response.Body.Close()
 
 	stats := make([]pdnsStat, 0)
 
-	body, err := io.ReadAll(response.Body)
+	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return err
 	}
@@ -121,136 +118,99 @@ func decodeStats(response *http.Response, config *Config) error {
 		return err
 	}
 
-	for _, stat := range stats {
-		switch stat.Type {
+	for i := 0; i < len(stats); i++ {
+		switch stats[i].Type {
 		case "StatisticItem":
-			err := statisticItem(stat, config)
-			if err != nil {
-				return err
+			if str, ok := stats[i].Value.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				if _, ok := gaugeNames[stats[i].Name]; ok {
+					config.StatsChan <- Statistic{
+						Name:  stats[i].Name,
+						Type:  gauge,
+						Value: val,
+					}
+					continue
+				}
+
+				// populate the map with metrics names.
+				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
+					config.counterCumulativeValues[stats[i].Name] = -1
+				}
+
+				config.StatsChan <- Statistic{
+					Name:  stats[i].Name,
+					Type:  counterCumulative,
+					Value: val,
+				}
 			}
-			continue
 		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
-			err := mapStatisticItem(stat, config)
-			if err != nil {
-				return err
+			for _, stat := range stats[i].Value.([]interface{}) {
+				if m, ok := stat.(map[string]interface{}); !ok {
+					continue
+				} else {
+					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
+					if err != nil {
+						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
+					}
+					n := fmt.Sprintf("%s-%s", stats[i].Name, m["name"])
+					// populate the map with metrics names.
+					if _, ok := config.counterCumulativeValues[n]; !ok {
+						config.counterCumulativeValues[n] = -1
+					}
+					config.StatsChan <- Statistic{
+						Name:  n,
+						Type:  counterCumulative,
+						Value: val,
+					}
+				}
 			}
-			continue
 		case "RingStatisticItem":
-			err := ringStatisticItem(stat, config)
-			if err != nil {
-				return err
+			if str, ok := stats[i].Size.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				// populate the map with metrics names.
+				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
+					config.counterCumulativeValues[stats[i].Name] = -1
+				}
+				config.StatsChan <- Statistic{
+					Name:  stats[i].Name,
+					Type:  gauge,
+					Value: val,
+				}
 			}
-			continue
 		default:
 			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
 			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
-			err := handleUnknownType(stat, config, response.Header.Get("Server"))
-			if err != nil {
-				return err
+			if str, ok := stats[i].Value.(string); ok {
+				val, err := strconv.ParseInt(str, 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+				}
+				n := fmt.Sprintf("unknown.%s", stats[i].Type)
+				// populate the map with metrics names.
+				if _, ok := config.counterCumulativeValues[n]; !ok {
+					config.counterCumulativeValues[n] = -1
+				}
+
+				config.StatsChan <- Statistic{
+					Name:  n,
+					Type:  counterCumulative,
+					Value: val,
+				}
+				version := response.Header.Get("Server")
+				log.Info("unknown metric type in api response",
+					zap.String("pdns_version", version),
+					zap.String("type", stats[i].Type),
+					zap.String("name", stats[i].Name),
+					zap.Int64("value", val),
+				)
+				continue
 			}
-			continue
-		}
-	}
-	return nil
-}
-
-// handleUnknownType captures unknown metrics types and handles them.
-func handleUnknownType(stat pdnsStat, config *Config, version string) error {
-	if str, ok := stat.Value.(string); ok {
-		val, err := strconv.ParseInt(str, base10, bitSize64)
-		if err != nil {
-			return fmt.Errorf(conversionErr, str)
-		}
-		n := fmt.Sprintf("unknown.%s", stat.Type)
-		// populate the map with metrics names.
-		if _, ok := config.counterCumulativeValues[n]; !ok {
-			config.counterCumulativeValues[n] = -1
-		}
-
-		config.StatsChan <- Statistic{
-			Name:  n,
-			Type:  counterCumulative,
-			Value: val,
-		}
-		log.Info("unknown metric type in api response",
-			zap.String("pdns_version", version),
-			zap.String("type", stat.Type),
-			zap.String("name", stat.Name),
-			zap.Int64("value", val),
-		)
-		return nil
-	}
-	return nil
-}
-
-// statisticItem emits a statistic for basic metric types.
-func statisticItem(stat pdnsStat, config *Config) error {
-	if str, ok := stat.Value.(string); ok {
-		val, err := strconv.ParseInt(str, base10, bitSize64)
-		if err != nil {
-			return fmt.Errorf(conversionErr, str)
-		}
-		if _, ok := gaugeNames[stat.Name]; ok {
-			config.StatsChan <- Statistic{
-				Name:  stat.Name,
-				Type:  gauge,
-				Value: val,
-			}
-			return nil
-		}
-
-		// populate the map with metrics names.
-		if _, ok := config.counterCumulativeValues[stat.Name]; !ok {
-			config.counterCumulativeValues[stat.Name] = -1
-		}
-
-		config.StatsChan <- Statistic{
-			Name:  stat.Name,
-			Type:  counterCumulative,
-			Value: val,
-		}
-	}
-	return nil
-}
-
-//nolint
-func mapStatisticItem(stat pdnsStat, config *Config) error {
-	for _, i := range stat.Value.([]interface{}) {
-		if m, ok := i.(map[string]interface{}); ok {
-			val, err := strconv.ParseInt(m["value"].(string), base10, bitSize64)
-			if err != nil {
-				return fmt.Errorf(conversionErr, m["value"])
-			}
-			n := fmt.Sprintf("%s-%s", stat.Name, m["name"])
-			// populate the map with metrics names.
-			if _, ok := config.counterCumulativeValues[n]; !ok {
-				config.counterCumulativeValues[n] = -1
-			}
-			config.StatsChan <- Statistic{
-				Name:  n,
-				Type:  counterCumulative,
-				Value: val,
-			}
-		}
-	}
-	return nil
-}
-
-func ringStatisticItem(stat pdnsStat, config *Config) error {
-	if str, ok := stat.Size.(string); ok {
-		val, err := strconv.ParseInt(str, base10, bitSize64)
-		if err != nil {
-			return fmt.Errorf(conversionErr, str)
-		}
-
-		// populate the map with metrics names.
-		if _, ok := config.counterCumulativeValues[stat.Name]; !ok {
-			config.counterCumulativeValues[stat.Name] = -1
-		}
-		config.StatsChan <- Statistic{
-			Name:  fmt.Sprintf(stat.Name),
-			Type:  gauge,
-			Value: val,
 		}
 	}
 	return nil

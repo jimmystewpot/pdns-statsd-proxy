@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,13 +15,10 @@ import (
 const (
 	provider string = "pdns-stats-proxy"
 	// metric types
-	counterCumulative string = "counter_cumulative"
-	gauge             string = "gauge"
-	buffer            int    = 100
-	base10            int    = 10
-	bitSize64         int    = 64
-	defaultInterval   int    = 15
-	conversionErr     string = "unable to convert %s value string to int64 in decodeStats()"
+	counterCumulative string        = "counter_cumulative"
+	gauge             string        = "gauge"
+	statsBufferSize   int           = 1000
+	defaultInterval   time.Duration = 15 * time.Second
 )
 
 var (
@@ -36,48 +34,48 @@ var (
 	pdnsPort   = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
 	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
 	recursor   = flag.Bool("recursor", true, "Query recursor statistics")
-	interval   = flag.Duration("interval", time.Duration(defaultInterval)*time.Second, "The interval to emit metrics in seconds")
+	interval   = flag.Duration("interval", defaultInterval, "The interval to emit metrics in seconds")
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
 func watchSignals(sig chan os.Signal, config *Config) {
-	s := <-sig
-	log.Info("Caught signal about to cleanly exit.",
-		zap.String("signal", s.String()),
-	)
-	config.pdnsDone <- true  // close downt he pdns worker first
-	config.statsDone <- true // close down the statsd worker
-	time.Sleep(*config.interval)
-	close(config.done) // unblock the main func for a clean exit.
+	for {
+		select {
+		case <-sig:
+			log.Info("Caught signal about to cleanly exit.")
+			config.pdnsDone <- true  // close downt he pdns worker first
+			config.statsDone <- true // close down the statsd worker
+			time.Sleep(*config.interval)
+			close(config.done) // unblock the main func for a clean exit.
+			return
+		}
+	}
 }
 
 func main() {
 	err := initLogger()
 	if err != nil {
-		log.Fatal("unable to initialise logging",
-			zap.Error(err))
+		fmt.Println("unable to initialise logging: ", err)
+		os.Exit(1)
 	}
 
 	config := new(Config)
 	if !config.Validate() {
-		log.Fatal("Unable to process configuration, missing flags",
-			zap.Error(err))
+		log.Fatal("Unable to process configuration, missing flags")
 	}
 
 	// initiate the statsd client.
 	stats, err = NewStatsClient(config)
 	if err != nil {
-		log.Fatal("Unable to initiate statsd client",
-			zap.Error(err))
+		log.Fatal("Unable to initiate statsd client")
 	}
 
 	// initiate the powerdns client.
 	pdnsClient := new(pdnsClient)
 	pdnsClient.Initialise(config)
-
 	// start background worker goroutines.
 	go pdnsClient.Worker(config)
-	go statsWorker(config)
+	go StatsWorker(config)
 
 	// handle signals correctly.
 	sigs := make(chan os.Signal, 1)

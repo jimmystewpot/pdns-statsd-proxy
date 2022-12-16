@@ -48,7 +48,8 @@ func (c *Config) Validate() bool {
 	if !c.flags() {
 		return false
 	}
-	c.StatsChan = make(chan Statistic, buffer)
+
+	c.StatsChan = make(chan Statistic, statsBufferSize)
 	c.done = make(chan bool, 1)
 	c.pdnsDone = make(chan bool, 1)
 	c.statsDone = make(chan bool, 1)
