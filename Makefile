@@ -1,7 +1,7 @@
 #!/usr/bin/make
 SHELL  := /bin/bash
 
-export PATH := $$PATH:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
+export PATH := $$PATH:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go/bin/
 
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
@@ -10,7 +10,6 @@ SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 
-LINT := $(shell which golangci-lint)
 
 build-all: deps lint clean-arch test pdns-statsd-proxy
 
@@ -24,10 +23,8 @@ deps:
 
 lint:
 ifdef INTERACTIVE
-	$(LINT)
 	golangci-lint run -v $(TEST_DIRS)
 else
-	$(LINT)
 	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
