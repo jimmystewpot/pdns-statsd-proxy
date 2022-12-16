@@ -52,3 +52,7 @@ jobs:
             -Dsonar.scm.disabled
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.verbose=true
+      - name: codecov
+        uses: codecov/codecov-action@v3
+        with:
+          directory: reports/
