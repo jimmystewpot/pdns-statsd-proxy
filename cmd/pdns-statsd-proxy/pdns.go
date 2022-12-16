@@ -131,6 +131,7 @@ func decodeStats(response *http.Response, config *Config) error {
 					continue
 				} else {
 					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
+					fmt.Println(stat)
 					if err != nil {
 						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
 					}

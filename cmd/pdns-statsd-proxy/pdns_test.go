@@ -110,6 +110,19 @@ func TestDecodeStats(t *testing.T) {
 			recursor: true,
 			wantErr:  false,
 		},
+		{
+			name: "recursor map type invalid int",
+			args: args{
+				response: &http.Response{
+					Body:   io.NopCloser(strings.NewReader(readpdnsTestData("recursor-4.3.3-bad_ints"))),
+					Header: testHeader(),
+				},
+				config: testConfig(),
+			},
+			count:    112,
+			recursor: true,
+			wantErr:  true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -239,4 +252,43 @@ func TestPdnsClientWorker(t *testing.T) {
 
 func ptrBool(b bool) *bool {
 	return &b
+}
+
+func Test_pdnsClient_Poll(t *testing.T) {
+	type fields struct {
+		Host   string
+		APIKey string
+		Client *http.Client
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    *http.Response
+		wantErr bool
+	}{
+		{
+			name: "Known bad configuration",
+			fields: fields{
+				Host:   "\1232\\1\\11",
+				APIKey: "bad-entry",
+				Client: &http.Client{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pdns := &pdnsClient{
+				Host:   tt.fields.Host,
+				APIKey: tt.fields.APIKey,
+				Client: tt.fields.Client,
+			}
+			resp, err := pdns.Poll()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("pdnsClient.Poll() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			defer resp.Body.Close()
+		})
+	}
 }
