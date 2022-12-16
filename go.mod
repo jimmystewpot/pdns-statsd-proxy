@@ -12,4 +12,4 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 )
 
-replace golang.org/x/crypto => golang.org/x/crypto 0.0.0-20200220183623-bac4c82f6975
+replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
