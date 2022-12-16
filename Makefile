@@ -68,7 +68,7 @@ test:
 	@echo ""
 	@echo "***** Testing PowerDNS statistics proxy *****"
 	GOOS=linux GOARCH=amd64 \
-	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
+	  go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic -json ./... 1> reports/testreport.json
 	@echo ""
 
 test-synk: get-synk
