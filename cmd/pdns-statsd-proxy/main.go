@@ -22,9 +22,8 @@ const (
 )
 
 var (
-	log        *zap.Logger
-	stats      *statsd.StatsdClient
-	gaugeNames = gaugeMetrics()
+	log   *zap.Logger
+	stats *statsd.StatsdClient
 
 	// flag variables set as globals allows us to test various types of flags without needing to hack around
 	// the flags package.
@@ -38,6 +37,8 @@ var (
 )
 
 // handle a graceful exit so that we do not lose data when we restart the service.
+//
+//nolint:gosimple // functionally works signals not supported by range
 func watchSignals(sig chan os.Signal, config *Config) {
 	for {
 		select {
