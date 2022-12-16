@@ -25,6 +25,7 @@ ifdef INTERACTIVE
 	@echo $PATH
 	golangci-lint run -v $(TEST_DIRS)
 else
+	@echo $PATH
 	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
