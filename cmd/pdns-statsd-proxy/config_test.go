@@ -85,124 +85,101 @@ func TestGetEnvStr(t *testing.T) {
 	}
 }
 
-func TestCheckpdnsAPIKey(t *testing.T) {
-	type args struct {
-		config *Config
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{
-			name: "Valid API Key",
-			args: args{
-				config: testConfig(),
-			},
-			want: true,
-		},
-		{
-			name: "No API Key",
-			args: args{
-				config: &Config{
-					pdnsAPIKey: stringPtr(""),
-				},
-			},
-			want: false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := checkpdnsAPIKey(tt.args.config); got != tt.want {
-				t.Errorf("checkpdnsAPIKey() = %v, want %v", got, tt.want)
-			}
-		})
-	}
+// timePtr returns a pointer for Time.Duration.
+func timePtr(t time.Duration) *time.Duration {
+	return &t
 }
 
-// This test is only for a bad example as we test the working examples using testConfig()
+// stringPtr returns a pointer for an input string
+func stringPtr(s string) *string {
+	return &s
+}
+
+// boolPtr returns a pointer for an input boolean
+func boolPtr(b bool) *bool {
+	return &b
+}
+
 func TestConfigValidate(t *testing.T) {
 	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
-
 	type fields struct {
-		statsHost  *string
-		statsPort  *string
-		interval   *time.Duration
-		pdnsHost   *string
-		pdnsPort   *string
-		pdnsAPIKey *string
-		recursor   *bool
-		StatsChan  chan Statistic
+		statsHost               *string
+		statsPort               *string
+		interval                *time.Duration
+		pdnsHost                *string
+		pdnsPort                *string
+		pdnsAPIKey              *string
+		recursor                *bool
+		counterCumulativeValues map[string]int64
+		StatsChan               chan Statistic
+		done                    chan bool
+		pdnsDone                chan bool
+		statsDone               chan bool
 	}
 	tests := []struct {
-		name     string
-		fields   fields
-		want     fields
-		response bool
-		wantErr  bool
+		name   string
+		fields fields
+		want   bool
 	}{
 		{
-			name: "bad configuration",
+			name: "no API key",
 			fields: fields{
 				pdnsAPIKey: stringPtr(""),
+				statsHost:  stringPtr("1.1.1.1"),
 			},
-			want: fields{
-				statsHost:  stringPtr(localhost),
-				statsPort:  stringPtr("8125"),
-				interval:   timePtr(time.Duration(1) * time.Second),
-				pdnsHost:   stringPtr(localhost),
-				pdnsPort:   stringPtr("8080"),
-				pdnsAPIKey: stringPtr("x-api-key"),
-				recursor:   boolPtr(true),
-			},
-			response: false,
-			wantErr:  true,
+			want: false,
 		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := new(Config)
-			if *tt.fields.pdnsAPIKey != "" {
-				os.Setenv("PDNS_API_KEY", *tt.fields.pdnsAPIKey)
-			}
-
-			if got := c.Validate(); got != tt.response {
-				t.Errorf("Config.Validate() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCheckStatsHost(t *testing.T) {
-	type args struct {
-		config *Config
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
 		{
-			name: "Valid Statsd Host",
-			args: args{
-				config: testConfig(),
+			name: "no statsd host",
+			fields: fields{
+				pdnsAPIKey: stringPtr("API-KEY"),
+				statsHost:  stringPtr(""),
+			},
+			want: false,
+		},
+		{
+			name: "nil statsd host",
+			fields: fields{
+				pdnsAPIKey: stringPtr("API-KEY"),
+				statsHost:  nil,
 			},
 			want: true,
 		},
 		{
-			name: "No Statsd host",
-			args: args{
-				config: &Config{
-					statsHost: stringPtr(""),
-				},
+			name: "nil api key",
+			fields: fields{
+				pdnsAPIKey: nil,
+				statsHost:  stringPtr("127.0.0.1"),
 			},
 			want: false,
+		},
+		{
+			name: "valid configuration",
+			fields: fields{
+				pdnsAPIKey: stringPtr("API-KEY"),
+				statsHost:  stringPtr("Foo"),
+			},
+			want: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := checkStatsHost(tt.args.config); got != tt.want {
-				t.Errorf("checkStatsHost() = %v, want %v", got, tt.want)
+			c := &Config{
+				statsHost:               tt.fields.statsHost,
+				statsPort:               tt.fields.statsPort,
+				interval:                tt.fields.interval,
+				pdnsHost:                tt.fields.pdnsHost,
+				pdnsPort:                tt.fields.pdnsPort,
+				pdnsAPIKey:              tt.fields.pdnsAPIKey,
+				recursor:                tt.fields.recursor,
+				counterCumulativeValues: tt.fields.counterCumulativeValues,
+				StatsChan:               tt.fields.StatsChan,
+				done:                    tt.fields.done,
+				pdnsDone:                tt.fields.pdnsDone,
+				statsDone:               tt.fields.statsDone,
+			}
+			if got := c.Validate(); got != tt.want {
+				t.Errorf("Config.Validate() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -161,3 +161,36 @@ func TestNewStatsClient(t *testing.T) {
 		})
 	}
 }
+
+func Test_processStats(t *testing.T) {
+	type args struct {
+		s                       Statistic
+		counterCumulativeValues map[string]int64
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Gauge Metric",
+			args: args{
+				s: Statistic{
+					Name:  "Foo",
+					Type:  gauge,
+					Value: 1,
+				},
+				counterCumulativeValues: map[string]int64{},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stats = &statsd.StatsdClient{}
+			if err := processStats(tt.args.s, tt.args.counterCumulativeValues); (err != nil) != tt.wantErr {
+				t.Errorf("processStats() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

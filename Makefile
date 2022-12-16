@@ -1,14 +1,25 @@
 #!/usr/bin/make
 SHELL  := /bin/bash
 
-export PATH = /usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin
+export PATH := $$PATH:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go/bin/
 
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
-DOCKER_IMAGE := golang:1.16-stretch
+DOCKER_IMAGE := golang:1.19-bullseye
 SYNK_IMAGE := snyk/snyk:golang
 TOOL := pdns-statsd-proxy
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
+
+
+build-all: deps lint clean-arch test pdns-statsd-proxy
+
+deps:
+	@echo ""
+	@echo "***** Installing dependencies for PowerDNS statistics proxy *****"
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+	go install github.com/roblaszczak/go-cleanarch@latest
+
+
 
 lint:
 ifdef INTERACTIVE
@@ -17,6 +28,11 @@ else
 	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
+
+clean-arch: deps
+	@echo ""
+	@echo "***** Testing clean arch for PowerDNS statistics proxy *****"
+	go-cleanarch cmd/pdns-statsd-proxy/
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
@@ -41,8 +57,6 @@ build: get-golang
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
-build-all: test pdns-statsd-proxy
-
 pdns-statsd-proxy:
 	@echo ""
 	@echo "***** Building PowerDNS statistics proxy *****"
@@ -56,7 +70,6 @@ test:
 	GOOS=linux GOARCH=amd64 \
 	go test -a -v -race -coverprofile=coverage.txt -covermode=atomic ./cmd/$(TOOL)
 	@echo ""
-
 
 test-synk: get-synk
 	@echo ""
