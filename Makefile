@@ -1,7 +1,7 @@
 #!/usr/bin/make
 SHELL  := /bin/bash
 
-export PATH := $$PATH:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go/bin/
+export PATH := $$PATH:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go/bin/:/snap/bin/
 
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
@@ -16,7 +16,7 @@ build-all: deps lint clean-arch test pdns-statsd-proxy
 deps:
 	@echo ""
 	@echo "***** Installing dependencies for PowerDNS statistics proxy *****"
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.50.1
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.52.2
 	go install github.com/roblaszczak/go-cleanarch@latest
 
 

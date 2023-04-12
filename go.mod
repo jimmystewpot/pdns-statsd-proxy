@@ -8,14 +8,14 @@ require (
 )
 
 require (
-	go.uber.org/atomic v1.7.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 )
 
-replace golang.org/x/crypto => golang.org/x/crypto v0.0.0-20220314234659-1baeb1ce4c0b
+replace golang.org/x/crypto => golang.org/x/crypto v0.8.0
 
-replace golang.org/x/text => golang.org/x/text v0.3.8
+replace golang.org/x/text => golang.org/x/text v0.9.0
 
-replace golang.org/x/net => golang.org/x/net v0.4.0
+replace golang.org/x/net => golang.org/x/net v0.7.0
 
 replace gopkg.in/yaml.v3 => gopkg.in/yaml.v3 v3.0.1
