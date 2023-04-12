@@ -127,23 +127,24 @@ func decodeStats(response *http.Response, config *Config) error {
 			}
 		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
 			for _, stat := range stats[i].Value.([]interface{}) {
-				if m, ok := stat.(map[string]interface{}); !ok {
+				var m map[string]interface{}
+				var ok bool
+				if m, ok = stat.(map[string]interface{}); !ok {
 					continue
-				} else {
-					val, err := strconv.ParseInt(m["value"].(string), 10, 64)
-					if err != nil {
-						return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
-					}
-					n := fmt.Sprintf("%s-%s", stats[i].Name, m["name"])
-					// populate the map with metrics names.
-					if _, ok := config.counterCumulativeValues[n]; !ok {
-						config.counterCumulativeValues[n] = -1
-					}
-					config.StatsChan <- Statistic{
-						Name:  n,
-						Type:  counterCumulative,
-						Value: val,
-					}
+				}
+				val, err := strconv.ParseInt(m["value"].(string), 10, 64)
+				if err != nil {
+					return fmt.Errorf("unable to convert %s string to int64 in decodeStats()", m["value"])
+				}
+				n := fmt.Sprintf("%s-%s", stats[i].Name, m["name"])
+				// populate the map with metrics names.
+				if _, ok := config.counterCumulativeValues[n]; !ok {
+					config.counterCumulativeValues[n] = -1
+				}
+				config.StatsChan <- Statistic{
+					Name:  n,
+					Type:  counterCumulative,
+					Value: val,
 				}
 			}
 		case "RingStatisticItem":
