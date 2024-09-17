@@ -24,3 +24,12 @@ jobs:
       - name: Test and Build
         run: make build
 
+  snyk-security-scan:
+    name: "Snyk Security Scan"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Snyk Security Scanning
+        run: make test-synk
