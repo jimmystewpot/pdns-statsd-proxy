@@ -23,7 +23,7 @@ jobs:
           fetch-depth: 0
       - name: Test and Build
         run: make build
-
+  
   snyk-security-scan:
     name: "Snyk Security Scan"
     runs-on: ubuntu-24.04
