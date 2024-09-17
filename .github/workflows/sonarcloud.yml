@@ -2,38 +2,32 @@ name: SonarCloud project analysis
 
 on:
   push:
-    branches:
-      - main
-      - '**'
+    branches: [ main ]
   pull_request:
     branches: [ main ]
-    types: [ opened ]
   workflow_dispatch:
+  schedule:
+    - cron: "1 1 2 * *"
 
 permissions:
   pull-requests: read # allows SonarCloud to decorate PRs with analysis results
 
 jobs:
-  Analysis:
-    runs-on: ubuntu-latest
+  generate_coverage_with_sonarcloud:
+    name: "Analyse with SonarCloud"
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-go@v3
-        with:
-          go-version: '1.19'
-      - name: Install Test Dependencies
-        run: make deps
-      - name: Run golangci-lint
-        run: make lint
+
       - name: Run Tests
         run: make test
       - name: Analyze project with SonarCloud
         # You can pin the exact commit or the version.
         # uses: SonarSource/sonarcloud-github-action@de2e56b42aa84d0b1c5b622644ac17e505c9a049
-        uses: SonarSource/sonarcloud-github-action@v1.8
+        uses: SonarSource/sonarcloud-github-action@v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -52,7 +46,3 @@ jobs:
             -Dsonar.scm.disabled
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.verbose=true
-      - name: codecov
-        uses: codecov/codecov-action@v3
-        with:
-          directory: reports/
