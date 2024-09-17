@@ -14,24 +14,26 @@ import (
 
 // pdnsClient stores the configuration for the powerdns client.
 type pdnsClient struct {
+	Client *http.Client
 	Host   string
 	APIKey string
-	Client *http.Client
 }
 
 // pdnsStat incoming statistics type
 type pdnsStat struct {
-	Name  string      `json:"name"`
-	Type  string      `json:"type"`
 	Size  interface{} `json:"size"`
 	Value interface{} `json:"value"`
+	Name  string      `json:"name"`
+	Type  string      `json:"type"`
 }
 
 // Initialise a new powerdns client.
+//
+//nolint:mnd // maxIdleConns is not a mnd
 func (pdns *pdnsClient) Initialise(config *Config) {
 	transport := &http.Transport{
 		MaxIdleConns:       10,
-		IdleConnTimeout:    *config.interval * 4,
+		IdleConnTimeout:    time.Duration(delayMultipler) * *config.interval,
 		DisableCompression: true,
 	}
 

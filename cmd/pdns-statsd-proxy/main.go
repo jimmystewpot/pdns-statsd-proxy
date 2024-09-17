@@ -19,6 +19,7 @@ const (
 	gauge             string        = "gauge"
 	statsBufferSize   int           = 1000
 	defaultInterval   time.Duration = 15 * time.Second
+	delayMultipler    int           = 4
 )
 
 var (
