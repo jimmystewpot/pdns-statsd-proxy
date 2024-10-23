@@ -96,7 +96,7 @@ test-snyk: get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
 	@echo "Snyk $${SNYK_TOKEN}"
-	@docker run \
+	docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
