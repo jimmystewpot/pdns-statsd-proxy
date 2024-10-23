@@ -1,10 +1,8 @@
 name: Unit Test, Lint and Build
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  push
+  pull_request
   workflow_dispatch:
   schedule:
     - cron: "1 1 2 * *"
