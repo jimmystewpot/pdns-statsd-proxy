@@ -12,6 +12,16 @@ INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
 SNYK_API_TOKEN := $${SNYK_TOKEN}
 
+check-env:
+	@echo ""
+	@echo "***** checking environment variables for ${TOOL} *****"
+ifndef SNYK_API_TOKEN
+	$(error SNYK_TOKEN environment variable is undefined)
+	
+else
+	@echo ""
+endif
+
 get-golang:
 	docker pull ${DOCKER_IMAGE}
 
@@ -93,7 +103,7 @@ test:
 	@echo ""
 
 
-test-snyk: get-snyk
+test-snyk: check-env get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
 	@echo "Snyk ${SNYK_API_TOKEN}"
