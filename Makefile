@@ -10,6 +10,7 @@ DOCKER_IMAGE := golang:1.23-bookworm
 SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
+SNYK_API_TOKEN := $${SNYK_TOKEN}
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
@@ -95,12 +96,12 @@ test:
 test-snyk: get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
-	@echo "Snyk $${SNYK_TOKEN}"
+	@echo "Snyk ${SNYK_API_TOKEN}"
 	docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
-		-e SNYK_TOKEN=${SNYK_TOKEN} \
+		-e SNYK_TOKEN=${SNYK_API_TOKEN} \
 		-e MONITOR=true \
 		-t ${SNYK_IMAGE}
 
