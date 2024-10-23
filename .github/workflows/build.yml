@@ -32,4 +32,4 @@ jobs:
         with:
           fetch-depth: 0
       - name: Snyk Security Scanning
-        run: make test-synk
+        run: make test-snyk

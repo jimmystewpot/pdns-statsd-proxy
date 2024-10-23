@@ -7,15 +7,15 @@ export PATH = $(shell echo $$PATH):/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
 DOCKER_IMAGE := golang:1.23-bookworm
-SYNK_IMAGE := snyk/snyk:golang
+SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
 
-get-synk:
-	docker pull ${SYNK_IMAGE}
+get-snyk:
+	docker pull ${SNYK_IMAGE}
 
 get-sonarcloud:
 	docker pull sonarsource/sonar-scanner-cli
@@ -92,25 +92,14 @@ test:
 	@echo ""
 
 
-test-synk: get-synk
+test-snyk: get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
 	@docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
-		-e SNYK_TOKEN=${SYNK_TOKEN} \
+		-e SNYK_TOKEN=${SNYK_TOKEN} \
 		-e MONITOR=true \
-		-t ${SYNK_IMAGE}
+		-t ${SNYK_IMAGE}
 
-test-sonarcloud: get-sonarcloud
-	@echo ""
-	@echo "***** Doing code analysis using SonarCloud *****"
-	@docker run \
-		--rm \
-		-v $(CURDIR):/build/$(GO_DIR) \
-		--workdir /build/$(GO_DIR) \
-		-e SNYK_TOKEN=${SYNK_TOKEN} \
-		-e MONITOR=true \
-		-t ${SYNK_IMAGE} \
-		sonarsource/sonar-scanner-cli
