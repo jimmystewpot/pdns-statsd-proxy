@@ -110,7 +110,6 @@ test:
 test-snyk: check-env get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
-	@echo "Snyk ${SNYK_API_TOKEN}"
 	docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
