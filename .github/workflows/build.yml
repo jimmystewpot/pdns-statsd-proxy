@@ -25,11 +25,12 @@ jobs:
   snyk-security-scan:
     name: "Snyk Security Scan"
     runs-on: ubuntu-24.04
-    secrets:
-      SNYK_API_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Snyk Security Scanning
         run: make test-snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
+
