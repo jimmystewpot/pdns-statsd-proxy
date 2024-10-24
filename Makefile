@@ -11,6 +11,7 @@ SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
 SNYK_TOKEN := $${SNYK_API_TOKEN}
+SNYK_ORG_ID := $${SNYK_ORG_ID}
 SNYK_LOG_LEVEL := debug
 
 check-env:
@@ -18,9 +19,11 @@ check-env:
 	@echo "***** checking environment variables for ${TOOL} *****"
 ifndef SNYK_TOKEN
 	$(error SNYK_TOKEN environment variable is undefined)
-	
 else
 	@echo ""
+endif
+ifndef SNYK_ORG_ID
+	SNYK_ORG_ID := "jimmystewpot"
 endif
 
 get-golang:
@@ -115,5 +118,5 @@ test-snyk: check-env get-snyk
 		-e SNYK_TOKEN=${SNYK_TOKEN} \
 		-e SNYK_LOG_LEVEL=${SNYK_LOG_LEVEL} \
 		-e MONITOR=true \
-		-t ${SNYK_IMAGE} snyk test --debug
+		-t ${SNYK_IMAGE} snyk test --org=${SNYK_ORG_ID}
 

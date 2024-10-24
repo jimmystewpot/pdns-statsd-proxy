@@ -33,4 +33,4 @@ jobs:
         run: make test-snyk
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
-
+          SNYK_ORG_ID: ${{ secrets.SNYK_ORG_ID }}
