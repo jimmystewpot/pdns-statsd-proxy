@@ -11,6 +11,7 @@ SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
 SNYK_API_TOKEN := $${SNYK_TOKEN}
+SNYK_LOG_LEVEL := debug
 
 check-env:
 	@echo ""
@@ -112,6 +113,7 @@ test-snyk: check-env get-snyk
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
 		-e SNYK_TOKEN=${SNYK_API_TOKEN} \
+		-e SNYK_LOG_LEVEL=${SNYK_LOG_LEVEL} \
 		-e MONITOR=true \
-		-t ${SNYK_IMAGE}
+		-t ${SNYK_IMAGE} snyk test --debug
 
