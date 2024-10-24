@@ -116,7 +116,9 @@ test-snyk: check-env get-snyk
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
 		-e SNYK_TOKEN=${SNYK_TOKEN} \
+		-e SNYK_ORG_ID=${SNYK_ORG_ID}
 		-e SNYK_LOG_LEVEL=${SNYK_LOG_LEVEL} \
 		-e MONITOR=true \
-		-t ${SNYK_IMAGE} snyk test --org=${SNYK_ORG_ID}
+		-t ${SNYK_IMAGE} \
+		snyk test --org=${SNYK_ORG_ID}
 

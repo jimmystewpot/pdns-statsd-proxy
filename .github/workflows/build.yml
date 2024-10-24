@@ -2,7 +2,11 @@ name: Unit Test, Lint and Build
 
 on:
   push:
-  pull_request: {}
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - master
   workflow_dispatch: {}
   schedule:
     - cron: "1 1 2 * *"
