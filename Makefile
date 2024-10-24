@@ -10,6 +10,21 @@ DOCKER_IMAGE := golang:1.23-bookworm
 SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
+SNYK_TOKEN := $${SNYK_API_TOKEN}
+SNYK_ORG_ID := $${SNYK_ORG_ID}
+SNYK_LOG_LEVEL := debug
+
+check-env:
+	@echo ""
+	@echo "***** checking environment variables for ${TOOL} *****"
+ifndef SNYK_TOKEN
+	$(error SNYK_TOKEN environment variable is undefined)
+else
+	@echo ""
+endif
+ifndef SNYK_ORG_ID
+	SNYK_ORG_ID := "jimmystewpot"
+endif
 
 get-golang:
 	docker pull ${DOCKER_IMAGE}
@@ -92,14 +107,18 @@ test:
 	@echo ""
 
 
-test-snyk: get-snyk
+test-snyk: check-env get-snyk
 	@echo ""
 	@echo "***** Testing vulnerabilities using Synk *****"
-	@docker run \
+	@echo "Snyk ${SNYK_API_TOKEN}"
+	docker run \
 		--rm \
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
 		-e SNYK_TOKEN=${SNYK_TOKEN} \
+		-e SNYK_ORG_ID=${SNYK_ORG_ID} \
+		-e SNYK_LOG_LEVEL=${SNYK_LOG_LEVEL} \
 		-e MONITOR=true \
-		-t ${SNYK_IMAGE}
+		-t ${SNYK_IMAGE} \
+		snyk test --org=${SNYK_ORG_ID} --debug
 

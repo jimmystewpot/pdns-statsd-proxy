@@ -1,3 +1,4 @@
 bin/pdns-statsd-proxy
+reports/*
 .vscode
 pdns_recursor.pid

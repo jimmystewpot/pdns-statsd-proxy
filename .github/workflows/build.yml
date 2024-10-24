@@ -2,15 +2,17 @@ name: Unit Test, Lint and Build
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - '**'
   pull_request:
-    branches: [ main ]
-  workflow_dispatch:
+    branches:
+      - master
+  workflow_dispatch: {}
   schedule:
     - cron: "1 1 2 * *"
 
 permissions:
-  pull-requests: read # allows SonarCloud to decorate PRs with analysis results
+  pull-requests: read
 
 jobs:
   build_and_test:
@@ -32,4 +34,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Snyk Security Scanning
-        run: make test-snyk
+        uses: snyk/actions/golang@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
+          SNYK_ORG_ID: ${{ secrets.SNYK_ORG_ID }}
