@@ -8,7 +8,7 @@ on:
     - cron: "1 1 2 * *"
 
 permissions:
-  pull-requests: read # allows SonarCloud to decorate PRs with analysis results
+  pull-requests: read
 
 jobs:
   build_and_test:
@@ -25,6 +25,8 @@ jobs:
   snyk-security-scan:
     name: "Snyk Security Scan"
     runs-on: ubuntu-24.04
+    secrets:
+      SNYK_API_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
