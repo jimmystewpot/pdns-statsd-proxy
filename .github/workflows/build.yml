@@ -34,7 +34,8 @@ jobs:
         with:
           fetch-depth: 0
       - name: Snyk Security Scanning
-        run: make test-snyk
+        uses: snyk/actions/golang@master
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
           SNYK_ORG_ID: ${{ secrets.SNYK_ORG_ID }}

@@ -120,5 +120,5 @@ test-snyk: check-env get-snyk
 		-e SNYK_LOG_LEVEL=${SNYK_LOG_LEVEL} \
 		-e MONITOR=true \
 		-t ${SNYK_IMAGE} \
-		snyk test --org=${SNYK_ORG_ID}
+		snyk test --org=${SNYK_ORG_ID} --debug
 
