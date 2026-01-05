@@ -16,6 +16,8 @@ import (
 )
 
 const (
+	unableToClosePDNSResponseBodyMsg = "unable to close PowerDNS response body"
+
 	serverVersionSplitParts = 4
 	serverVersionMinParts   = 2
 	serverVersionPatchPart  = 3
@@ -110,7 +112,7 @@ func (pdns *pdnsClient) Worker(config *Config) {
 			closeBody := func() {
 				if response != nil && response.Body != nil {
 					if err := response.Body.Close(); err != nil {
-						log.Debug("unable to close PowerDNS response body",
+						log.Debug(unableToClosePDNSResponseBodyMsg,
 							zap.Error(err),
 						)
 					}
@@ -173,7 +175,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 
 	if response.StatusCode != http.StatusOK {
 		if err := response.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -211,7 +213,7 @@ func (pdns *pdnsClient) pollWithDiscovery(prometheusMinVersion pdnsVersion) (*ht
 	ensurePrometheusMode(resp)
 	if pdns.usePrometheus {
 		if err := resp.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -234,7 +236,7 @@ func (pdns *pdnsClient) doRequest(url string) (*http.Response, error) {
 	}
 	if response.StatusCode != http.StatusOK {
 		if err := response.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -290,7 +292,7 @@ func readNumericPrefix(s string) string {
 	return s
 }
 
-func isAtLeast(got pdnsVersion, want pdnsVersion) bool {
+func isAtLeast(got, want pdnsVersion) bool {
 	if got.major != want.major {
 		return got.major > want.major
 	}
