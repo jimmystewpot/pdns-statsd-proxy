@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,163 @@ func readpdnsTestData(version string) string {
 	f, _ := os.ReadFile(jsonFile)
 
 	return string(f)
+}
+
+func TestReadNumericPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "digits only", in: "123", want: "123"},
+		{name: "digits then suffix", in: "42-test", want: "42"},
+		{name: "no digits", in: "abc", want: ""},
+		{name: "empty", in: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := readNumericPrefix(tt.in); got != tt.want {
+				t.Fatalf("readNumericPrefix(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPoll_Discovery_SwitchesToPrometheus(t *testing.T) {
+	config := testConfig()
+
+	var legacyHits, promHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/servers/localhost/statistics":
+			legacyHits++
+			w.Header().Set("Server", "PowerDNS/4.9.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "[]")
+		case "/metrics":
+			promHits++
+			w.Header().Set("Server", "PowerDNS/4.9.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "# TYPE foo counter\nfoo 1\n")
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("expected response")
+	}
+	defer resp.Body.Close()
+
+	if !pdns.usePrometheus {
+		t.Fatalf("expected usePrometheus=true")
+	}
+	if legacyHits != 1 || promHits != 1 {
+		t.Fatalf("expected legacyHits=1 promHits=1 got legacyHits=%d promHits=%d", legacyHits, promHits)
+	}
+}
+
+func TestPoll_Discovery_StaysLegacy(t *testing.T) {
+	config := testConfig()
+
+	var legacyHits, promHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/servers/localhost/statistics":
+			legacyHits++
+			w.Header().Set("Server", "PowerDNS/4.2.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "[]")
+		case "/metrics":
+			promHits++
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "foo 1\n")
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if pdns.usePrometheus {
+		t.Fatalf("expected usePrometheus=false")
+	}
+	if legacyHits != 1 {
+		t.Fatalf("expected legacyHits=1 got %d", legacyHits)
+	}
+	if promHits != 0 {
+		t.Fatalf("expected promHits=0 got %d", promHits)
+	}
+}
+
+func TestPoll_ErrorOnNon200(t *testing.T) {
+	config := testConfig()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "PowerDNS/4.9.0")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "boom")
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err == nil {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		t.Fatalf("expected error")
+	}
+
+	if resp != nil && resp.StatusCode != 0 {
+		_ = strconv.ErrRange
+	}
 }
 
 func testDNSClient(config *Config) *pdnsClient {
