@@ -61,6 +61,7 @@ build: get-golang
 		--workdir /build/$(GO_DIR) \
 		-e GOPATH=/build \
 		-e PATH=$(PATH) \
+		-e "GOFLAGS=-buildvcs=false" \
 		-t ${DOCKER_IMAGE} \
 		make build-all
 
