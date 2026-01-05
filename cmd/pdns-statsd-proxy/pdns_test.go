@@ -292,3 +292,156 @@ func Test_pdnsClient_Poll(t *testing.T) {
 func ptrBool(b bool) *bool {
 	return &b
 }
+
+func TestParsePDNSServerHeader(t *testing.T) {
+	tests := []struct {
+		name      string
+		header    string
+		want      pdnsVersion
+		wantFound bool
+	}{
+		{
+			name:      "plain semantic version",
+			header:    "PowerDNS/4.3.0",
+			want:      pdnsVersion{major: 4, minor: 3, patch: 0},
+			wantFound: true,
+		},
+		{
+			name:      "version with suffix",
+			header:    "PowerDNS/4.3.0-test",
+			want:      pdnsVersion{major: 4, minor: 3, patch: 0},
+			wantFound: true,
+		},
+		{
+			name:      "header contains PowerDNS token",
+			header:    "nginx/1.21.6 (some) PowerDNS/4.2.1",
+			want:      pdnsVersion{major: 4, minor: 2, patch: 1},
+			wantFound: true,
+		},
+		{
+			name:      "missing version",
+			header:    "PowerDNS/",
+			wantFound: false,
+		},
+		{
+			name:      "no PowerDNS token",
+			header:    "Apache/2.4.0",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := parsePDNSServerHeader(tt.header)
+			if ok != tt.wantFound {
+				t.Fatalf("parsePDNSServerHeader() ok = %v, want %v", ok, tt.wantFound)
+			}
+			if !tt.wantFound {
+				return
+			}
+			if got != tt.want {
+				t.Fatalf("parsePDNSServerHeader() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsAtLeast(t *testing.T) {
+	tests := []struct {
+		name string
+		got  pdnsVersion
+		want pdnsVersion
+		ok   bool
+	}{
+		{
+			name: "equal",
+			got:  pdnsVersion{major: 4, minor: 3, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   true,
+		},
+		{
+			name: "newer minor",
+			got:  pdnsVersion{major: 4, minor: 4, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   true,
+		},
+		{
+			name: "older minor",
+			got:  pdnsVersion{major: 4, minor: 2, patch: 99},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   false,
+		},
+		{
+			name: "older patch",
+			got:  pdnsVersion{major: 4, minor: 3, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 1},
+			ok:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAtLeast(tt.got, tt.want); got != tt.ok {
+				t.Fatalf("isAtLeast(%+v, %+v) = %v, want %v", tt.got, tt.want, got, tt.ok)
+			}
+		})
+	}
+}
+
+func TestDecodePrometheusStats(t *testing.T) {
+	config := testConfig()
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			"# HELP pdns_recursor_all_outqueries Number of outgoing UDP queries since starting",
+			"# TYPE pdns_recursor_all_outqueries counter",
+			"pdns_recursor_all_outqueries 20",
+			"# TYPE pdns_recursor_uptime gauge",
+			"pdns_recursor_uptime{foo=\"bar\"} 142",
+			"pdns_recursor_no_type 3",
+			"pdns_recursor_bad abc",
+		}, "\n"))),
+		Header: make(http.Header),
+	}
+
+	if err := decodePrometheusStats(resp, config); err != nil {
+		t.Fatalf("decodePrometheusStats() error = %v", err)
+	}
+
+	got := make(map[string]Statistic)
+	for len(config.StatsChan) > 0 {
+		s := <-config.StatsChan
+		got[s.Name] = s
+	}
+
+	all, ok := got["pdns_recursor_all_outqueries"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_all_outqueries")
+	}
+	if all.Type != counterCumulative || all.Value != 20 {
+		t.Fatalf("pdns_recursor_all_outqueries = %+v, want type=%s value=%d", all, counterCumulative, 20)
+	}
+	if _, ok := config.counterCumulativeValues["pdns_recursor_all_outqueries"]; !ok {
+		t.Fatalf("expected counterCumulativeValues to contain pdns_recursor_all_outqueries")
+	}
+
+	up, ok := got["pdns_recursor_uptime"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_uptime")
+	}
+	if up.Type != gauge || up.Value != 142 {
+		t.Fatalf("pdns_recursor_uptime = %+v, want type=%s value=%d", up, gauge, 142)
+	}
+
+	nt, ok := got["pdns_recursor_no_type"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_no_type")
+	}
+	if nt.Type != gauge || nt.Value != 3 {
+		t.Fatalf("pdns_recursor_no_type = %+v, want type=%s value=%d", nt, gauge, 3)
+	}
+
+	if _, ok := got["pdns_recursor_bad"]; ok {
+		t.Fatalf("did not expect pdns_recursor_bad to be emitted")
+	}
+}

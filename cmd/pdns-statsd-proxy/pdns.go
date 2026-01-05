@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -17,6 +20,20 @@ type pdnsClient struct {
 	Client *http.Client
 	Host   string
 	APIKey string
+
+	versionOnce         sync.Once
+	serverVersion       pdnsVersion
+	serverVersionParsed bool
+	usePrometheus       bool
+
+	legacyPath     string
+	prometheusPath string
+}
+
+type pdnsVersion struct {
+	major int
+	minor int
+	patch int
 }
 
 // pdnsStat incoming statistics type
@@ -37,7 +54,11 @@ func (pdns *pdnsClient) Initialise(config *Config) {
 		DisableCompression: true,
 	}
 
-	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", net.JoinHostPort(*config.pdnsHost, *config.pdnsPort))
+	baseURL := fmt.Sprintf("http://%s", net.JoinHostPort(*config.pdnsHost, *config.pdnsPort))
+	pdns.legacyPath = fmt.Sprintf("%s/api/v1/servers/localhost/statistics", baseURL)
+	pdns.prometheusPath = fmt.Sprintf("%s/metrics", baseURL)
+	// Default to legacy until we discover the server version.
+	pdns.Host = pdns.legacyPath
 
 	pdns.APIKey = *config.pdnsAPIKey
 	// Ensure polls don't hang indefinitely. Default to 10s, but for very small intervals
@@ -72,7 +93,11 @@ func (pdns *pdnsClient) Worker(config *Config) {
 				)
 				continue
 			}
-			err = decodeStats(response, config)
+			if pdns.usePrometheus {
+				err = decodePrometheusStats(response, config)
+			} else {
+				err = decodeStats(response, config)
+			}
 			if err != nil {
 				log.Error("powerdns decodeStats",
 					zap.Error(err),
@@ -97,7 +122,42 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 		}
 	}()
 
-	request, err := http.NewRequest("GET", pdns.Host, http.NoBody)
+	ensurePrometheusMode := func(resp *http.Response) {
+		pdns.versionOnce.Do(func() {
+			version := resp.Header.Get("Server")
+			if v, ok := parsePDNSServerHeader(version); ok {
+				pdns.serverVersion = v
+				pdns.serverVersionParsed = true
+				pdns.usePrometheus = isAtLeast(v, pdnsVersion{major: 4, minor: 3, patch: 0})
+				if pdns.usePrometheus {
+					pdns.Host = pdns.prometheusPath
+				} else {
+					pdns.Host = pdns.legacyPath
+				}
+			}
+		})
+	}
+
+	// If this is the first poll, hit the legacy endpoint to discover the server version,
+	// then switch to /metrics for >=4.3.
+	if !pdns.serverVersionParsed {
+		resp, err := pdns.doRequest(pdns.legacyPath)
+		if err != nil {
+			return &http.Response{}, err
+		}
+		ensurePrometheusMode(resp)
+		if pdns.usePrometheus {
+			resp.Body.Close()
+			return pdns.doRequest(pdns.prometheusPath)
+		}
+		return resp, nil
+	}
+
+	requestURL := pdns.legacyPath
+	if pdns.usePrometheus {
+		requestURL = pdns.prometheusPath
+	}
+	request, err := http.NewRequest("GET", requestURL, http.NoBody)
 	if err != nil {
 		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
 	}
@@ -111,12 +171,83 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	}
 
 	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
 		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
 	}
 
-	log.Info("successfully queried PowerDNS statistics")
-
 	return response, nil
+}
+
+func (pdns *pdnsClient) doRequest(url string) (*http.Response, error) {
+	request, err := http.NewRequest("GET", url, http.NoBody)
+	if err != nil {
+		return &http.Response{}, fmt.Errorf("unable to instantiate new http client: %s", err)
+	}
+	request.Header.Add("X-API-Key", pdns.APIKey)
+	request.Header.Add("User-Agent", provider)
+
+	response, err := pdns.Client.Do(request)
+	if err != nil {
+		return &http.Response{}, err
+	}
+	if response.StatusCode != http.StatusOK {
+		response.Body.Close()
+		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
+	}
+	return response, nil
+}
+
+func parsePDNSServerHeader(server string) (pdnsVersion, bool) {
+	idx := strings.Index(server, "PowerDNS/")
+	if idx < 0 {
+		return pdnsVersion{}, false
+	}
+	ver := strings.TrimPrefix(server[idx:], "PowerDNS/")
+	ver = strings.TrimSpace(ver)
+	if ver == "" {
+		return pdnsVersion{}, false
+	}
+	parts := strings.SplitN(ver, ".", 4)
+	if len(parts) < 2 {
+		return pdnsVersion{}, false
+	}
+
+	major, err := strconv.Atoi(readNumericPrefix(parts[0]))
+	if err != nil {
+		return pdnsVersion{}, false
+	}
+	minor, err := strconv.Atoi(readNumericPrefix(parts[1]))
+	if err != nil {
+		return pdnsVersion{}, false
+	}
+	patch := 0
+	if len(parts) >= 3 {
+		p, err := strconv.Atoi(readNumericPrefix(parts[2]))
+		if err == nil {
+			patch = p
+		}
+	}
+
+	return pdnsVersion{major: major, minor: minor, patch: patch}, true
+}
+
+func readNumericPrefix(s string) string {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return s[:i]
+		}
+	}
+	return s
+}
+
+func isAtLeast(got pdnsVersion, want pdnsVersion) bool {
+	if got.major != want.major {
+		return got.major > want.major
+	}
+	if got.minor != want.minor {
+		return got.minor > want.minor
+	}
+	return got.patch >= want.patch
 }
 
 func decodeStats(response *http.Response, config *Config) error {
@@ -211,6 +342,67 @@ func decodeStats(response *http.Response, config *Config) error {
 				return err
 			}
 		}
+	}
+	return nil
+}
+
+func decodePrometheusStats(response *http.Response, config *Config) error {
+	defer response.Body.Close()
+
+	scanner := bufio.NewScanner(response.Body)
+	metricTypes := make(map[string]string)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "#") {
+			if strings.HasPrefix(line, "# TYPE ") {
+				fields := strings.Fields(line)
+				// # TYPE <metric_name> <counter|gauge|...>
+				if len(fields) >= 4 {
+					metricTypes[fields[2]] = fields[3]
+				}
+			}
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		nameRaw := fields[0]
+		name := nameRaw
+		if idx := strings.IndexByte(nameRaw, '{'); idx >= 0 {
+			name = nameRaw[:idx]
+		}
+		if name == "" {
+			continue
+		}
+
+		f, err := strconv.ParseFloat(fields[1], 64)
+		if err != nil {
+			continue
+		}
+		val := int64(f)
+
+		t := metricTypes[name]
+		statType := gauge
+		if t == "counter" {
+			statType = counterCumulative
+		}
+
+		if statType == counterCumulative {
+			if _, ok := config.counterCumulativeValues[name]; !ok {
+				config.counterCumulativeValues[name] = -1
+			}
+		}
+
+		config.StatsChan <- Statistic{Name: name, Type: statType, Value: val}
+	}
+	if err := scanner.Err(); err != nil {
+		return err
 	}
 	return nil
 }
