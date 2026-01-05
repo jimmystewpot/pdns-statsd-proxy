@@ -40,7 +40,20 @@ func (pdns *pdnsClient) Initialise(config *Config) {
 	pdns.Host = fmt.Sprintf("http://%s/api/v1/servers/localhost/statistics", net.JoinHostPort(*config.pdnsHost, *config.pdnsPort))
 
 	pdns.APIKey = *config.pdnsAPIKey
-	pdns.Client = &http.Client{Transport: transport}
+	// Ensure polls don't hang indefinitely. Default to 10s, but for very small intervals
+	// keep the timeout below the poll cadence.
+	timeout := 10 * time.Second
+	if config.interval != nil && *config.interval > 0 {
+		candidate := *config.interval / 2
+		if candidate > 0 && candidate < timeout {
+			timeout = candidate
+		}
+	}
+	// Avoid a near-zero timeout making the service unusable.
+	if timeout < 100*time.Millisecond {
+		timeout = 100 * time.Millisecond
+	}
+	pdns.Client = &http.Client{Transport: transport, Timeout: timeout}
 }
 
 // Worker wraps a ticker for task execution to query the powerdns API.
