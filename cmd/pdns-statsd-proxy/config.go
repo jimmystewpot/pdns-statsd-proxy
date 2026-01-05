@@ -38,11 +38,13 @@ func (c *Config) flags() bool {
 	c.statsPort = statsPort
 	c.pdnsHost = pdnsHost
 	c.pdnsPort = pdnsPort
-	// if it's not set via flags or tests, check the environment variable for the API key.
+	// Ensure pdnsAPIKey is always initialised (tests may set it directly).
 	if c.pdnsAPIKey == nil {
-		if *pdnsAPIKey == "" {
-			c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
-		}
+		c.pdnsAPIKey = pdnsAPIKey
+	}
+	// If the flag value is empty, fallback to environment variable.
+	if c.pdnsAPIKey == nil || *c.pdnsAPIKey == "" {
+		c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
 	}
 	c.recursor = recursor
 	c.interval = interval
