@@ -1,3 +1,5 @@
+version: 2
+
 linters-settings:
   dupl:
     threshold: 100
@@ -24,12 +26,6 @@ linters-settings:
       - unnamedResult
   gocyclo:
     min-complexity: 16
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/golangci/golangci-lint
-  golint:
-    min-confidence: 0
   govet:
     disable-all: true
     # Enable analyzers by name.
@@ -104,11 +100,8 @@ linters:
     - gosmopolitan
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - lll
@@ -119,23 +112,30 @@ linters:
     - rowserrcheck
     - revive
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
+formatters-settings:
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/golangci/golangci-lint
 
 issues:
   # Exclude configuration for test files
   exclude-rules:
     - path: _test\.go
       linters:
-        - gomnd # magic numbers
         - govet # we don't care about align and other problems in test files usually.
         - lll # long lines; test strings, bytes etc.
         - mnd # magic numbers
-        - scopelint # using tt var in ranged loop
         - funlen # long functions, common in table-driven tests
         - dupl # duplicate code detection
         - revive

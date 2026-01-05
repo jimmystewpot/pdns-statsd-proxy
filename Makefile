@@ -71,8 +71,8 @@ test-all: deps lint test
 deps:
 	@echo ""
 	@echo "***** Installing dependencies for ${TOOL} *****"
-	go clean --cache
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.61.0
+	go mod tidy
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.7.2
 
 pdns-statsd-proxy:
 	@echo ""
