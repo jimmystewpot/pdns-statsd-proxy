@@ -65,6 +65,40 @@ builds:
     no_unique_dist_dir: false
     no_main_check: true
 
+nfpms:
+  - id: pdns-statsd-proxy
+    package_name: pdns-statsd-proxy
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    ids:
+      - pdns-statsd-proxy
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    maintainer: "{{ .Env.GORELEASER_MAINTAINER }}"
+    description: "PowerDNS statistics to statsd bridge"
+    license: "MIT"
+    scripts:
+      postinstall: packaging/postinstall.sh
+      postremove: packaging/postremove.sh
+    contents:
+      - src: systemd/pdns-statsd-proxy.service
+        dst: /lib/systemd/system/pdns-statsd-proxy.service
+        file_info:
+          mode: 0644
+      - src: systemd/pdns-statsd-proxy.service
+        dst: /usr/lib/systemd/system/pdns-statsd-proxy.service
+        file_info:
+          mode: 0644
+      - src: README.md
+        dst: /usr/share/doc/pdns-statsd-proxy/README.md
+        file_info:
+          mode: 0644
+      - src: LICENSE
+        dst: /usr/share/doc/pdns-statsd-proxy/LICENSE
+        file_info:
+          mode: 0644
+
 checksum:
   name_template: '{{ .ArtifactName }}.{{ .Algorithm }}'
   algorithm: sha256
