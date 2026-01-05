@@ -8,7 +8,7 @@ require (
 )
 
 require (
-	github.com/Microsoft/go-winio v0.5.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	github.com/Microsoft/go-winio v0.6.2 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
 )
