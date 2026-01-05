@@ -119,8 +119,9 @@ func TestDecodeStats(t *testing.T) {
 				},
 				config: testConfig(),
 			},
+			count:    113,
 			recursor: true,
-			wantErr:  true,
+			wantErr:  false,
 		},
 	}
 	for _, tt := range tests {
