@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -20,9 +21,10 @@ type Config struct {
 	recursor                *bool
 	counterCumulativeValues map[string]int64
 	StatsChan               chan Statistic
-	done                    chan bool // close global
-	pdnsDone                chan bool // close the pdns worker
-	statsDone               chan bool // close the stats worker
+	stopOnce                sync.Once
+	stop                    chan struct{} // close global stop signal
+	pdnsExited              chan struct{} // closed by the pdns worker
+	statsExited             chan struct{} // closed by the stats worker
 }
 
 func (c *Config) flags() bool {
@@ -78,9 +80,9 @@ func (c *Config) Validate() bool {
 	c.counterCumulativeValues = make(map[string]int64)
 
 	c.StatsChan = make(chan Statistic, statsBufferSize)
-	c.done = make(chan bool, 1)
-	c.pdnsDone = make(chan bool, 1)
-	c.statsDone = make(chan bool, 1)
+	c.stop = make(chan struct{})
+	c.pdnsExited = make(chan struct{})
+	c.statsExited = make(chan struct{})
 	return true
 }
 

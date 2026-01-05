@@ -51,10 +51,15 @@ func NewStatsClient(config *Config) (*statsd.StatsdClient, error) {
 // statsWorker wraps a ticker for task execution.
 func statsWorker(config *Config) {
 	log.Info("Starting statsd statistics worker...")
+	defer close(config.statsExited)
 
 	for {
 		select {
-		case s := <-config.StatsChan:
+		case s, ok := <-config.StatsChan:
+			if !ok {
+				log.Info("exiting from StatsWorker.")
+				return
+			}
 			err := processStats(s, config.counterCumulativeValues)
 			if err != nil {
 				log.Error("error submitting statistics",
@@ -64,7 +69,7 @@ func statsWorker(config *Config) {
 					zap.Error(err),
 				)
 			}
-		case <-config.statsDone:
+		case <-config.stop:
 			err := stats.Close()
 			if err != nil {
 				log.Error("unable to cleanly close statsd buffer",
@@ -72,8 +77,6 @@ func statsWorker(config *Config) {
 				)
 			}
 			log.Info("exiting from StatsWorker.")
-			close(config.statsDone)
-			close(config.StatsChan)
 			return
 		}
 	}

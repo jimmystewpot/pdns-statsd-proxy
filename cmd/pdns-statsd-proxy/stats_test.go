@@ -43,6 +43,7 @@ func TestGaugeMetrics(t *testing.T) {
 
 func TestStatsWorker(t *testing.T) {
 	var wg sync.WaitGroup
+	config := testConfig()
 
 	type args struct {
 		config *Config
@@ -54,7 +55,7 @@ func TestStatsWorker(t *testing.T) {
 		{
 			name: "stats worker start",
 			args: args{
-				config: testConfig(),
+				config: config,
 			},
 		},
 	}
@@ -71,7 +72,7 @@ func TestStatsWorker(t *testing.T) {
 		defer statsSrv.Close()
 		for {
 			select {
-			case <-config.done:
+			case <-config.stop:
 				return
 			default:
 				buf := make([]byte, statsd.UDPPayloadSize)
@@ -81,7 +82,7 @@ func TestStatsWorker(t *testing.T) {
 				}
 			}
 		}
-	}(testConfig())
+	}(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -109,8 +110,8 @@ func TestStatsWorker(t *testing.T) {
 			go statsWorker(tt.args.config)
 
 			time.Sleep(time.Duration(3500) * time.Millisecond)
-			tt.args.config.statsDone <- true
-			tt.args.config.done <- true // close the udp listener.
+			close(config.stop)
+			<-tt.args.config.statsExited
 		})
 	}
 }

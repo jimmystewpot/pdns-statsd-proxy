@@ -60,6 +60,8 @@ func (pdns *pdnsClient) Initialise(config *Config) {
 func (pdns *pdnsClient) Worker(config *Config) {
 	log.Info("Starting PowerDNS statistics worker...")
 	interval := time.NewTicker(*config.interval)
+	defer interval.Stop()
+	defer close(config.pdnsExited)
 	for {
 		select {
 		case <-interval.C:
@@ -76,9 +78,8 @@ func (pdns *pdnsClient) Worker(config *Config) {
 					zap.Error(err),
 				)
 			}
-		case <-config.pdnsDone:
+		case <-config.stop:
 			log.Info("exiting from pdns Worker.")
-			close(config.pdnsDone)
 			return
 		}
 	}

@@ -37,9 +37,9 @@ func testConfig() *Config {
 		recursor:                boolPtr(true),
 		counterCumulativeValues: make(map[string]int64),
 		StatsChan:               make(chan Statistic, 1000),
-		done:                    make(chan bool, 1),
-		pdnsDone:                make(chan bool, 1),
-		statsDone:               make(chan bool, 1),
+		stop:                    make(chan struct{}),
+		pdnsExited:              make(chan struct{}),
+		statsExited:             make(chan struct{}),
 	}
 }
 
@@ -112,9 +112,9 @@ func TestConfigValidate(t *testing.T) {
 		recursor                *bool
 		counterCumulativeValues map[string]int64
 		StatsChan               chan Statistic
-		done                    chan bool
-		pdnsDone                chan bool
-		statsDone               chan bool
+		stop                    chan struct{}
+		pdnsExited              chan struct{}
+		statsExited             chan struct{}
 	}
 	tests := []struct {
 		name   string
@@ -174,9 +174,9 @@ func TestConfigValidate(t *testing.T) {
 				recursor:                tt.fields.recursor,
 				counterCumulativeValues: tt.fields.counterCumulativeValues,
 				StatsChan:               tt.fields.StatsChan,
-				done:                    tt.fields.done,
-				pdnsDone:                tt.fields.pdnsDone,
-				statsDone:               tt.fields.statsDone,
+				stop:                    tt.fields.stop,
+				pdnsExited:              tt.fields.pdnsExited,
+				statsExited:             tt.fields.statsExited,
 			}
 			if got := c.Validate(); got != tt.want {
 				t.Errorf("Config.Validate() = %v, want %v", got, tt.want)

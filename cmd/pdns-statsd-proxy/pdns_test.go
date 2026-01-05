@@ -238,11 +238,12 @@ func TestPdnsClientWorker(t *testing.T) {
 			// close the channel in the background to test a correct exit state.
 			go func(config *Config) {
 				time.Sleep(time.Duration(1000) * time.Millisecond)
-				config.pdnsDone <- true
+				close(config.stop)
 			}(tt.args.config)
 
 			go pdns.Worker(tt.args.config)
 			time.Sleep(time.Duration(1500) * time.Millisecond)
+			<-tt.args.config.pdnsExited
 
 			// close the mock server.
 			srv.Close()

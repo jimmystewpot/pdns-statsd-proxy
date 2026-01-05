@@ -25,5 +25,5 @@ func TestWatchSignals(t *testing.T) {
 	}()
 
 	// this should block until the signal is received by the watch signals, otherwise the test fails.
-	<-config.done
+	<-config.stop
 }

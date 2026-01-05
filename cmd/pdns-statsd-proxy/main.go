@@ -45,10 +45,7 @@ func watchSignals(sig chan os.Signal, config *Config) {
 		select {
 		case <-sig:
 			log.Info("Caught signal about to cleanly exit.")
-			config.pdnsDone <- true  // close downt he pdns worker first
-			config.statsDone <- true // close down the statsd worker
-			time.Sleep(*config.interval)
-			close(config.done) // unblock the main func for a clean exit.
+			config.stopOnce.Do(func() { close(config.stop) })
 			return
 		}
 	}
@@ -84,10 +81,9 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go watchSignals(sigs, config)
 
-	// wait until the Done channel is terminated before cleanly exiting.
-	<-config.done
-	// make sure that the statsdone channel has closed gracefully
-	<-config.statsDone
-	// make sure the powerdns worker has closed gracefully.
-	<-config.pdnsDone
+	// wait until stop is triggered
+	<-config.stop
+	// wait for workers to exit
+	<-config.pdnsExited
+	<-config.statsExited
 }
