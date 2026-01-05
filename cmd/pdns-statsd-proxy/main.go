@@ -39,16 +39,11 @@ var (
 
 // handle a graceful exit so that we do not lose data when we restart the service.
 //
-//nolint:gosimple // functionally works signals not supported by range
-func watchSignals(sig chan os.Signal, config *Config) {
-	for {
-		select {
-		case <-sig:
-			log.Info("Caught signal about to cleanly exit.")
-			config.stopOnce.Do(func() { close(config.stop) })
-			return
-		}
-	}
+
+func watchSignals(sig <-chan os.Signal, config *Config) {
+	<-sig
+	log.Info("Caught signal about to cleanly exit.")
+	config.stopOnce.Do(func() { close(config.stop) })
 }
 
 func main() {
