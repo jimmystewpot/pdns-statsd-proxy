@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/quipo/statsd"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +23,7 @@ const (
 
 var (
 	log   *zap.Logger
-	stats *statsd.StatsdClient
+	stats statsClient
 
 	// flag variables set as globals allows us to test various types of flags without needing to hack around
 	// the flags package.

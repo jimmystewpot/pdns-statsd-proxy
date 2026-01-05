@@ -8,9 +8,15 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/quipo/statsd"
 )
+
+const udpReadBufSize = 65535
+
+type errStatsClient struct{}
+
+func (errStatsClient) Gauge(string, float64, []string, float64) error { return io.ErrClosedPipe }
+func (errStatsClient) Count(string, int64, []string, float64) error   { return io.ErrClosedPipe }
+func (errStatsClient) Close() error                                   { return nil }
 
 func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
@@ -75,7 +81,7 @@ func TestStatsWorker(t *testing.T) {
 			case <-config.stop:
 				return
 			default:
-				buf := make([]byte, statsd.UDPPayloadSize)
+				buf := make([]byte, udpReadBufSize)
 				_, _, err := statsSrv.ReadFromUDP(buf)
 				if err != nil {
 					continue
@@ -188,7 +194,7 @@ func Test_processStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stats = &statsd.StatsdClient{}
+			stats = errStatsClient{}
 			if err := processStats(tt.args.s, tt.args.counterCumulativeValues); (err != nil) != tt.wantErr {
 				t.Errorf("processStats() error = %v, wantErr %v", err, tt.wantErr)
 			}

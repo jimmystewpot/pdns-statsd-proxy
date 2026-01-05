@@ -1,9 +1,9 @@
 module github.com/jimmystewpot/pdns-statsd-proxy
 
-go 1.23
+go 1.25
 
 require (
-	github.com/quipo/statsd v0.0.0-20180118161217-3d6a5565f314
+	github.com/DataDog/datadog-go/v5 v5.6.0
 	go.uber.org/zap v1.27.0
 )
 

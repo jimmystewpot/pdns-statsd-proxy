@@ -12,6 +12,7 @@ import (
 
 // Config holds all the configuration required to start the service.
 type Config struct {
+	counterCumulativeValues map[string]int64
 	statsHost               *string
 	statsPort               *string
 	interval                *time.Duration
@@ -19,7 +20,6 @@ type Config struct {
 	pdnsPort                *string
 	pdnsAPIKey              *string
 	recursor                *bool
-	counterCumulativeValues map[string]int64
 	StatsChan               chan Statistic
 	stopOnce                sync.Once
 	stop                    chan struct{} // close global stop signal

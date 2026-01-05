@@ -15,19 +15,28 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	serverVersionSplitParts = 4
+	serverVersionMinParts   = 2
+	serverVersionPatchPart  = 3
+
+	prometheusTypeMinFields = 4
+	prometheusMinFields     = 2
+)
+
 // pdnsClient stores the configuration for the powerdns client.
 type pdnsClient struct {
 	Client *http.Client
-	Host   string
 	APIKey string
+	Host   string
+
+	legacyPath     string
+	prometheusPath string
 
 	versionOnce         sync.Once
 	serverVersion       pdnsVersion
 	serverVersionParsed bool
 	usePrometheus       bool
-
-	legacyPath     string
-	prometheusPath string
 }
 
 type pdnsVersion struct {
@@ -122,13 +131,15 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 		}
 	}()
 
+	prometheusMinVersion := pdnsVersion{major: 4, minor: 3, patch: 0}
+
 	ensurePrometheusMode := func(resp *http.Response) {
 		pdns.versionOnce.Do(func() {
 			version := resp.Header.Get("Server")
 			if v, ok := parsePDNSServerHeader(version); ok {
 				pdns.serverVersion = v
 				pdns.serverVersionParsed = true
-				pdns.usePrometheus = isAtLeast(v, pdnsVersion{major: 4, minor: 3, patch: 0})
+				pdns.usePrometheus = isAtLeast(v, prometheusMinVersion)
 				if pdns.usePrometheus {
 					pdns.Host = pdns.prometheusPath
 				} else {
@@ -207,8 +218,8 @@ func parsePDNSServerHeader(server string) (pdnsVersion, bool) {
 	if ver == "" {
 		return pdnsVersion{}, false
 	}
-	parts := strings.SplitN(ver, ".", 4)
-	if len(parts) < 2 {
+	parts := strings.SplitN(ver, ".", serverVersionSplitParts)
+	if len(parts) < serverVersionMinParts {
 		return pdnsVersion{}, false
 	}
 
@@ -221,7 +232,7 @@ func parsePDNSServerHeader(server string) (pdnsVersion, bool) {
 		return pdnsVersion{}, false
 	}
 	patch := 0
-	if len(parts) >= 3 {
+	if len(parts) >= serverVersionPatchPart {
 		p, err := strconv.Atoi(readNumericPrefix(parts[2]))
 		if err == nil {
 			patch = p
@@ -253,97 +264,106 @@ func isAtLeast(got pdnsVersion, want pdnsVersion) bool {
 func decodeStats(response *http.Response, config *Config) error {
 	defer response.Body.Close()
 
-	stats := make([]pdnsStat, 0)
-
-	body, err := io.ReadAll(response.Body)
+	stats, err := readLegacyStats(response.Body)
 	if err != nil {
 		return err
 	}
 
-	err = json.Unmarshal(body, &stats)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < len(stats); i++ {
-		switch stats[i].Type {
-		case "StatisticItem":
-			err = decodeStringStat(response, stats[i], config, false)
-			if err != nil {
-				return err
-			}
-		case "MapStatisticItem": // adds the new MapStatisticsItem type added in 4.2.0
-			arr, ok := stats[i].Value.([]interface{})
-			if !ok {
-				continue
-			}
-			for _, stat := range arr {
-				m, ok := stat.(map[string]interface{})
-				if !ok {
-					continue
-				}
-
-				name, ok := m["name"].(string)
-				if !ok || name == "" {
-					continue
-				}
-
-				valRaw, ok := m["value"]
-				if !ok {
-					continue
-				}
-
-				var val int64
-				switch v := valRaw.(type) {
-				case string:
-					parsed, err := strconv.ParseInt(v, 10, 64)
-					if err != nil {
-						continue
-					}
-					val = parsed
-				case float64:
-					val = int64(v)
-				default:
-					continue
-				}
-
-				n := fmt.Sprintf("%s-%s", stats[i].Name, name)
-				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[n]; !ok {
-					config.counterCumulativeValues[n] = -1
-				}
-				config.StatsChan <- Statistic{
-					Name:  n,
-					Type:  counterCumulative,
-					Value: val,
-				}
-			}
-		case "RingStatisticItem":
-			if str, ok := stats[i].Size.(string); ok {
-				val, err := strconv.ParseInt(str, 10, 64)
-				if err != nil {
-					return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
-				}
-				// populate the map with metrics names.
-				if _, ok := config.counterCumulativeValues[stats[i].Name]; !ok {
-					config.counterCumulativeValues[stats[i].Name] = -1
-				}
-				config.StatsChan <- Statistic{
-					Name:  stats[i].Name,
-					Type:  gauge,
-					Value: val,
-				}
-			}
-		default:
-			// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
-			// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
-			err := decodeStringStat(response, stats[i], config, true)
-			if err != nil {
-				return err
-			}
+	for i := range stats {
+		if err := handleLegacyStat(response, stats[i], config); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+func readLegacyStats(body io.Reader) ([]pdnsStat, error) {
+	stats := make([]pdnsStat, 0)
+
+	raw, err := io.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(raw, &stats); err != nil {
+		return nil, err
+	}
+	return stats, nil
+}
+
+func handleLegacyStat(response *http.Response, stat pdnsStat, config *Config) error {
+	switch stat.Type {
+	case "StatisticItem":
+		return decodeStringStat(response, stat, config, false)
+	case "MapStatisticItem":
+		return decodeMapStatisticItem(stat, config)
+	case "RingStatisticItem":
+		return decodeRingStatisticItem(stat, config)
+	default:
+		// this allows for forward compatibility of powerdns adds new metrics types we just skip over them.
+		// we emit a metric so that we know this is happening. powerdns.(recursor|authoritative).unknown.(type)
+		return decodeStringStat(response, stat, config, true)
+	}
+}
+
+func decodeMapStatisticItem(stat pdnsStat, config *Config) error {
+	arr, ok := stat.Value.([]interface{})
+	if !ok {
+		return nil
+	}
+	for _, raw := range arr {
+		m, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		name, ok := m["name"].(string)
+		if !ok || name == "" {
+			continue
+		}
+
+		val, ok := readInt64MetricValue(m["value"])
+		if !ok {
+			continue
+		}
+
+		n := fmt.Sprintf("%s-%s", stat.Name, name)
+		if _, ok := config.counterCumulativeValues[n]; !ok {
+			config.counterCumulativeValues[n] = -1
+		}
+		config.StatsChan <- Statistic{Name: n, Type: counterCumulative, Value: val}
+	}
+	return nil
+}
+
+func decodeRingStatisticItem(stat pdnsStat, config *Config) error {
+	str, ok := stat.Size.(string)
+	if !ok {
+		return nil
+	}
+	val, err := strconv.ParseInt(str, 10, 64)
+	if err != nil {
+		return fmt.Errorf("unable to convert %s value string to int64 in decodeStats()", str)
+	}
+	if _, ok := config.counterCumulativeValues[stat.Name]; !ok {
+		config.counterCumulativeValues[stat.Name] = -1
+	}
+	config.StatsChan <- Statistic{Name: stat.Name, Type: gauge, Value: val}
+	return nil
+}
+
+func readInt64MetricValue(valRaw interface{}) (int64, bool) {
+	switch v := valRaw.(type) {
+	case string:
+		parsed, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return 0, false
+		}
+		return parsed, true
+	case float64:
+		return int64(v), true
+	default:
+		return 0, false
+	}
 }
 
 func decodePrometheusStats(response *http.Response, config *Config) error {
@@ -360,7 +380,7 @@ func decodePrometheusStats(response *http.Response, config *Config) error {
 			if strings.HasPrefix(line, "# TYPE ") {
 				fields := strings.Fields(line)
 				// # TYPE <metric_name> <counter|gauge|...>
-				if len(fields) >= 4 {
+				if len(fields) >= prometheusTypeMinFields {
 					metricTypes[fields[2]] = fields[3]
 				}
 			}
@@ -368,7 +388,7 @@ func decodePrometheusStats(response *http.Response, config *Config) error {
 		}
 
 		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		if len(fields) < prometheusMinFields {
 			continue
 		}
 
