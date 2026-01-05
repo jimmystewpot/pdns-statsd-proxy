@@ -13,6 +13,9 @@ type Logger interface {
 
 type logger struct{}
 
+var _ Logger = (*logger)(nil)
+var _ = (*logger).Println
+
 func (l *logger) Println(v ...interface{}) {
 	for _, entry := range v {
 		if val, ok := entry.(string); ok {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,163 @@ func readpdnsTestData(version string) string {
 	f, _ := os.ReadFile(jsonFile)
 
 	return string(f)
+}
+
+func TestReadNumericPrefix(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "digits only", in: "123", want: "123"},
+		{name: "digits then suffix", in: "42-test", want: "42"},
+		{name: "no digits", in: "abc", want: ""},
+		{name: "empty", in: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := readNumericPrefix(tt.in); got != tt.want {
+				t.Fatalf("readNumericPrefix(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPoll_Discovery_SwitchesToPrometheus(t *testing.T) {
+	config := testConfig()
+
+	var legacyHits, promHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/servers/localhost/statistics":
+			legacyHits++
+			w.Header().Set("Server", "PowerDNS/4.9.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "[]")
+		case "/metrics":
+			promHits++
+			w.Header().Set("Server", "PowerDNS/4.9.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "# TYPE foo counter\nfoo 1\n")
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("expected response")
+	}
+	defer resp.Body.Close()
+
+	if !pdns.usePrometheus {
+		t.Fatalf("expected usePrometheus=true")
+	}
+	if legacyHits != 1 || promHits != 1 {
+		t.Fatalf("expected legacyHits=1 promHits=1 got legacyHits=%d promHits=%d", legacyHits, promHits)
+	}
+}
+
+func TestPoll_Discovery_StaysLegacy(t *testing.T) {
+	config := testConfig()
+
+	var legacyHits, promHits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/servers/localhost/statistics":
+			legacyHits++
+			w.Header().Set("Server", "PowerDNS/4.2.0")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "[]")
+		case "/metrics":
+			promHits++
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprint(w, "foo 1\n")
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if pdns.usePrometheus {
+		t.Fatalf("expected usePrometheus=false")
+	}
+	if legacyHits != 1 {
+		t.Fatalf("expected legacyHits=1 got %d", legacyHits)
+	}
+	if promHits != 0 {
+		t.Fatalf("expected promHits=0 got %d", promHits)
+	}
+}
+
+func TestPoll_ErrorOnNon200(t *testing.T) {
+	config := testConfig()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Server", "PowerDNS/4.9.0")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, "boom")
+	}))
+	defer srv.Close()
+
+	hostPort := strings.TrimPrefix(srv.URL, "http://")
+	host, port, err := net.SplitHostPort(hostPort)
+	if err != nil {
+		t.Fatalf("SplitHostPort(%q) error = %v", hostPort, err)
+	}
+	config.pdnsHost = stringPtr(host)
+	config.pdnsPort = stringPtr(port)
+	config.pdnsAPIKey = stringPtr("x")
+
+	pdns := new(pdnsClient)
+	pdns.Initialise(config)
+
+	resp, err := pdns.Poll()
+	if err == nil {
+		if resp != nil && resp.Body != nil {
+			resp.Body.Close()
+		}
+		t.Fatalf("expected error")
+	}
+
+	if resp != nil && resp.StatusCode != 0 {
+		_ = strconv.ErrRange
+	}
 }
 
 func testDNSClient(config *Config) *pdnsClient {
@@ -119,8 +277,9 @@ func TestDecodeStats(t *testing.T) {
 				},
 				config: testConfig(),
 			},
+			count:    113,
 			recursor: true,
-			wantErr:  true,
+			wantErr:  false,
 		},
 	}
 	for _, tt := range tests {
@@ -237,11 +396,12 @@ func TestPdnsClientWorker(t *testing.T) {
 			// close the channel in the background to test a correct exit state.
 			go func(config *Config) {
 				time.Sleep(time.Duration(1000) * time.Millisecond)
-				config.pdnsDone <- true
+				close(config.stop)
 			}(tt.args.config)
 
 			go pdns.Worker(tt.args.config)
 			time.Sleep(time.Duration(1500) * time.Millisecond)
+			<-tt.args.config.pdnsExited
 
 			// close the mock server.
 			srv.Close()
@@ -289,4 +449,157 @@ func Test_pdnsClient_Poll(t *testing.T) {
 
 func ptrBool(b bool) *bool {
 	return &b
+}
+
+func TestParsePDNSServerHeader(t *testing.T) {
+	tests := []struct {
+		name      string
+		header    string
+		want      pdnsVersion
+		wantFound bool
+	}{
+		{
+			name:      "plain semantic version",
+			header:    "PowerDNS/4.3.0",
+			want:      pdnsVersion{major: 4, minor: 3, patch: 0},
+			wantFound: true,
+		},
+		{
+			name:      "version with suffix",
+			header:    "PowerDNS/4.3.0-test",
+			want:      pdnsVersion{major: 4, minor: 3, patch: 0},
+			wantFound: true,
+		},
+		{
+			name:      "header contains PowerDNS token",
+			header:    "nginx/1.21.6 (some) PowerDNS/4.2.1",
+			want:      pdnsVersion{major: 4, minor: 2, patch: 1},
+			wantFound: true,
+		},
+		{
+			name:      "missing version",
+			header:    "PowerDNS/",
+			wantFound: false,
+		},
+		{
+			name:      "no PowerDNS token",
+			header:    "Apache/2.4.0",
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := parsePDNSServerHeader(tt.header)
+			if ok != tt.wantFound {
+				t.Fatalf("parsePDNSServerHeader() ok = %v, want %v", ok, tt.wantFound)
+			}
+			if !tt.wantFound {
+				return
+			}
+			if got != tt.want {
+				t.Fatalf("parsePDNSServerHeader() = %+v, want %+v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsAtLeast(t *testing.T) {
+	tests := []struct {
+		name string
+		got  pdnsVersion
+		want pdnsVersion
+		ok   bool
+	}{
+		{
+			name: "equal",
+			got:  pdnsVersion{major: 4, minor: 3, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   true,
+		},
+		{
+			name: "newer minor",
+			got:  pdnsVersion{major: 4, minor: 4, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   true,
+		},
+		{
+			name: "older minor",
+			got:  pdnsVersion{major: 4, minor: 2, patch: 99},
+			want: pdnsVersion{major: 4, minor: 3, patch: 0},
+			ok:   false,
+		},
+		{
+			name: "older patch",
+			got:  pdnsVersion{major: 4, minor: 3, patch: 0},
+			want: pdnsVersion{major: 4, minor: 3, patch: 1},
+			ok:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAtLeast(tt.got, tt.want); got != tt.ok {
+				t.Fatalf("isAtLeast(%+v, %+v) = %v, want %v", tt.got, tt.want, got, tt.ok)
+			}
+		})
+	}
+}
+
+func TestDecodePrometheusStats(t *testing.T) {
+	config := testConfig()
+
+	resp := &http.Response{
+		Body: io.NopCloser(strings.NewReader(strings.Join([]string{
+			"# HELP pdns_recursor_all_outqueries Number of outgoing UDP queries since starting",
+			"# TYPE pdns_recursor_all_outqueries counter",
+			"pdns_recursor_all_outqueries 20",
+			"# TYPE pdns_recursor_uptime gauge",
+			"pdns_recursor_uptime{foo=\"bar\"} 142",
+			"pdns_recursor_no_type 3",
+			"pdns_recursor_bad abc",
+		}, "\n"))),
+		Header: make(http.Header),
+	}
+
+	if err := decodePrometheusStats(resp, config); err != nil {
+		t.Fatalf("decodePrometheusStats() error = %v", err)
+	}
+
+	got := make(map[string]Statistic)
+	for len(config.StatsChan) > 0 {
+		s := <-config.StatsChan
+		got[s.Name] = s
+	}
+
+	all, ok := got["pdns_recursor_all_outqueries"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_all_outqueries")
+	}
+	if all.Type != counterCumulative || all.Value != 20 {
+		t.Fatalf("pdns_recursor_all_outqueries = %+v, want type=%s value=%d", all, counterCumulative, 20)
+	}
+	if _, ok := config.counterCumulativeValues["pdns_recursor_all_outqueries"]; !ok {
+		t.Fatalf("expected counterCumulativeValues to contain pdns_recursor_all_outqueries")
+	}
+
+	up, ok := got["pdns_recursor_uptime"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_uptime")
+	}
+	if up.Type != gauge || up.Value != 142 {
+		t.Fatalf("pdns_recursor_uptime = %+v, want type=%s value=%d", up, gauge, 142)
+	}
+
+	nt, ok := got["pdns_recursor_no_type"]
+	if !ok {
+		t.Fatalf("expected metric pdns_recursor_no_type")
+	}
+	if nt.Type != gauge || nt.Value != 3 {
+		t.Fatalf("pdns_recursor_no_type = %+v, want type=%s value=%d", nt, gauge, 3)
+	}
+
+	if _, ok := got["pdns_recursor_bad"]; ok {
+		t.Fatalf("did not expect pdns_recursor_bad to be emitted")
+	}
 }

@@ -8,9 +8,15 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/quipo/statsd"
 )
+
+const udpReadBufSize = 65535
+
+type errStatsClient struct{}
+
+func (errStatsClient) Gauge(string, float64, []string, float64) error { return io.ErrClosedPipe }
+func (errStatsClient) Count(string, int64, []string, float64) error   { return io.ErrClosedPipe }
+func (errStatsClient) Close() error                                   { return nil }
 
 func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
@@ -43,6 +49,7 @@ func TestGaugeMetrics(t *testing.T) {
 
 func TestStatsWorker(t *testing.T) {
 	var wg sync.WaitGroup
+	config := testConfig()
 
 	type args struct {
 		config *Config
@@ -54,7 +61,7 @@ func TestStatsWorker(t *testing.T) {
 		{
 			name: "stats worker start",
 			args: args{
-				config: testConfig(),
+				config: config,
 			},
 		},
 	}
@@ -71,17 +78,17 @@ func TestStatsWorker(t *testing.T) {
 		defer statsSrv.Close()
 		for {
 			select {
-			case <-config.done:
+			case <-config.stop:
 				return
 			default:
-				buf := make([]byte, statsd.UDPPayloadSize)
+				buf := make([]byte, udpReadBufSize)
 				_, _, err := statsSrv.ReadFromUDP(buf)
 				if err != nil {
 					continue
 				}
 			}
 		}
-	}(testConfig())
+	}(config)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -109,8 +116,8 @@ func TestStatsWorker(t *testing.T) {
 			go statsWorker(tt.args.config)
 
 			time.Sleep(time.Duration(3500) * time.Millisecond)
-			tt.args.config.statsDone <- true
-			tt.args.config.done <- true // close the udp listener.
+			close(config.stop)
+			<-tt.args.config.statsExited
 		})
 	}
 }
@@ -187,7 +194,7 @@ func Test_processStats(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			stats = &statsd.StatsdClient{}
+			stats = errStatsClient{}
 			if err := processStats(tt.args.s, tt.args.counterCumulativeValues); (err != nil) != tt.wantErr {
 				t.Errorf("processStats() error = %v, wantErr %v", err, tt.wantErr)
 			}

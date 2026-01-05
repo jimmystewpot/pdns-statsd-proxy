@@ -6,39 +6,143 @@ Background: [PowerDNS](https://www.powerdns.com/) is a powerful open source DNS 
 
 This tool aims to provide a lightweight http to statsd bridge/proxy. It will query the PowerDNS API and emit the metrics in either statsd gauge or increments to a statsd server of your choice.
 
+# How it works
+
+This tool runs two background workers:
+
+- **PowerDNS poller**: polls the PowerDNS HTTP API on an interval.
+- **Statsd emitter**: receives decoded metrics via a channel and emits them to statsd.
+
+## PowerDNS API mode selection
+
+PowerDNS Recursor added a Prometheus-compatible `/metrics` endpoint in **4.3.0**.
+
+To support both API styles without requiring additional configuration, the client performs version discovery:
+
+- **On the first successful poll**, the client requests the legacy JSON statistics endpoint and reads the `Server:` header (for example `PowerDNS/4.9.0`).
+- The parsed version is **cached** and does not need to be re-evaluated on subsequent polls.
+- Based on the discovered version:
+  - **`4.0 <= version < 4.3`**: uses the legacy JSON endpoint.
+  - **`version >= 4.3`**: uses the Prometheus `/metrics` endpoint.
+
 # PowerDNS Support
 
 ## recursor
 
-* 4.0
-* 4.1
-* 4.2
-* 4.3
+- 4.0, 4.1, 4.2: `/api/v1/servers/localhost/statistics`
+- 4.3+: `/metrics`
 
 ## authoritative
 
-* 4.3
+- 4.3+: `/metrics` (requires the authoritative server webserver/API to be enabled)
 
+# Configuration
 
-# Build
+## Flags
 
-Requires Docker to be installed as it builds within a container to output binaries in Linux elf format.
+- `-statsHost` (default `127.0.0.1`): statsd host
+- `-statsPort` (default `8125`): statsd port
+- `-pdnsHost` (default `127.0.0.1`): PowerDNS webserver/API host
+- `-pdnsPort` (default `8080`): PowerDNS webserver/API port
+- `-key` (default empty): PowerDNS API key (sent as `X-API-Key`)
+- `-recursor` (default `true`): whether to prefix metrics as recursor vs authoritative
+- `-interval` (default `15s`): polling interval
 
-```make build```
+## Environment variables
 
-Will output an artifact to *$PWD/bin* 
-
-# Install
-
-```make install```
-
-Will install the artifact from *$PWD/bin* into /opt/pdns-stats-proxy/ and the systemd unit (service)
+- `PDNS_API_KEY`: used as a fallback if `-key` is not set or is empty.
 
 # Running
 
-Enable in systemctl
+## Example: recursor
 
-```systemctl enable pdns-stats-proxy```
+```bash
+PDNS_API_KEY=changeme \
+  ./pdns-statsd-proxy \
+  -pdnsHost 127.0.0.1 \
+  -pdnsPort 8082 \
+  -statsHost 127.0.0.1 \
+  -statsPort 8125 \
+  -recursor=true \
+  -interval 15s
+```
+
+## Example: authoritative
+
+```bash
+PDNS_API_KEY=changeme \
+  ./pdns-statsd-proxy \
+  -pdnsHost 127.0.0.1 \
+  -pdnsPort 8081 \
+  -statsHost 127.0.0.1 \
+  -statsPort 8125 \
+  -recursor=false \
+  -interval 15s
+```
+
+# Testing
+
+## Unit tests
+
+```bash
+go test ./...
+```
+
+## Docker-backed contract tests
+
+Contract tests spin up real PowerDNS containers via Docker to validate behavior against real services.
+
+They are opt-in and require:
+
+- Docker available
+- `PDNS_CONTRACT=1`
+
+Run:
+
+```bash
+PDNS_CONTRACT=1 go test -tags contract ./...
+```
+
+Optional overrides:
+
+- `PDNS_RECURSOR_PRE43_IMAGE` (default `powerdns/pdns-recursor-42:4.2.0`)
+- `PDNS_RECURSOR_43PLUS_IMAGE` (default `powerdns/pdns-recursor-49:4.9.0`)
+
+# Build
+
+You can build locally with Go or use the provided Docker-based Makefile.
+
+## Local build
+
+```bash
+go build -o bin/pdns-statsd-proxy ./cmd/pdns-statsd-proxy
+```
+
+## Makefile build
+
+Requires Docker to be installed as it builds within a container to output binaries in Linux elf format.
+
+```bash
+make build
+```
+
+Will output an artifact to *$PWD/bin*
+
+# Install
+
+```bash
+make install
+```
+
+Will install the artifact from *$PWD/bin* into /opt/pdns-stats-proxy/ and the systemd unit (service)
+
+# Service (systemd)
+
+Enable the service:
+
+```bash
+systemctl enable pdns-stats-proxy
+```
 
 
 # Architecture

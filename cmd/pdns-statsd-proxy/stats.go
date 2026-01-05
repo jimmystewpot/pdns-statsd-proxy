@@ -4,9 +4,17 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/quipo/statsd"
+	ddstatsd "github.com/DataDog/datadog-go/v5/statsd"
 	"go.uber.org/zap"
 )
+
+type statsClient interface {
+	Gauge(name string, value float64, tags []string, rate float64) error
+	Count(name string, value int64, tags []string, rate float64) error
+	Close() error
+}
+
+var _ = gaugeMetrics
 
 // Statistic Wrapper struct
 type Statistic struct {
@@ -24,37 +32,38 @@ func zeroMin(x int64) int64 {
 }
 
 // NewStatsClient creates a statsd client.
-func NewStatsClient(config *Config) (*statsd.StatsdClient, error) {
-	var statsclient = new(statsd.StatsdClient)
-	var logger = new(logger)
+
+func NewStatsClient(config *Config) (statsClient, error) {
 	host := net.JoinHostPort(*config.statsHost, *config.statsPort)
 
 	if *config.statsHost != "" {
+		namespace := "powerdns.authoritative."
 		if *config.recursor {
-			statsclient = statsd.NewStatsdClient(host, "powerdns.recursor.")
-		} else {
-			statsclient = statsd.NewStatsdClient(host, "powerdns.authoritative.")
+			namespace = "powerdns.recursor."
 		}
 
-		err := statsclient.CreateSocket()
+		client, err := ddstatsd.New(host, ddstatsd.WithNamespace(namespace))
 		if err != nil {
-			return &statsd.StatsdClient{}, err
+			return nil, err
 		}
-		statsclient.Logger = logger
-
-		return statsclient, nil
+		return client, nil
 	}
 	// return error
-	return &statsd.StatsdClient{}, fmt.Errorf("error, no statsd host configured")
+	return nil, fmt.Errorf("error, no statsd host configured")
 }
 
 // statsWorker wraps a ticker for task execution.
 func statsWorker(config *Config) {
 	log.Info("Starting statsd statistics worker...")
+	defer close(config.statsExited)
 
 	for {
 		select {
-		case s := <-config.StatsChan:
+		case s, ok := <-config.StatsChan:
+			if !ok {
+				log.Info("exiting from StatsWorker.")
+				return
+			}
 			err := processStats(s, config.counterCumulativeValues)
 			if err != nil {
 				log.Error("error submitting statistics",
@@ -64,7 +73,7 @@ func statsWorker(config *Config) {
 					zap.Error(err),
 				)
 			}
-		case <-config.statsDone:
+		case <-config.stop:
 			err := stats.Close()
 			if err != nil {
 				log.Error("unable to cleanly close statsd buffer",
@@ -72,8 +81,6 @@ func statsWorker(config *Config) {
 				)
 			}
 			log.Info("exiting from StatsWorker.")
-			close(config.statsDone)
-			close(config.StatsChan)
 			return
 		}
 	}
@@ -93,16 +100,16 @@ func processStats(s Statistic, counterCumulativeValues map[string]int64) error {
 
 	switch s.Type {
 	case gauge:
-		err := stats.Gauge(s.Name, s.Value)
+		err := stats.Gauge(s.Name, float64(s.Value), nil, 1)
 		if err != nil {
 			return err
 		}
-	case counterCumulative: // quipo/statsd supports 'Total', but that does not seem to be standard statsd type
+	case counterCumulative:
 		// skip sending first known value for a given incrementing metric because implicit prior value of zero
 		// results in ugly data spikes
 		if val, ok := counterCumulativeValues[s.Name]; ok {
 			if val != -1 {
-				err := stats.Incr(s.Name, zeroMin(s.Value-counterCumulativeValues[s.Name]))
+				err := stats.Count(s.Name, zeroMin(s.Value-counterCumulativeValues[s.Name]), nil, 1)
 				if err != nil {
 					return err
 				}

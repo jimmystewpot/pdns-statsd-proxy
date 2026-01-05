@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/quipo/statsd"
 	"go.uber.org/zap"
 )
 
@@ -24,7 +23,7 @@ const (
 
 var (
 	log   *zap.Logger
-	stats *statsd.StatsdClient
+	stats statsClient
 
 	// flag variables set as globals allows us to test various types of flags without needing to hack around
 	// the flags package.
@@ -39,19 +38,11 @@ var (
 
 // handle a graceful exit so that we do not lose data when we restart the service.
 //
-//nolint:gosimple // functionally works signals not supported by range
-func watchSignals(sig chan os.Signal, config *Config) {
-	for {
-		select {
-		case <-sig:
-			log.Info("Caught signal about to cleanly exit.")
-			config.pdnsDone <- true  // close downt he pdns worker first
-			config.statsDone <- true // close down the statsd worker
-			time.Sleep(*config.interval)
-			close(config.done) // unblock the main func for a clean exit.
-			return
-		}
-	}
+
+func watchSignals(sig <-chan os.Signal, config *Config) {
+	<-sig
+	log.Info("Caught signal about to cleanly exit.")
+	config.stopOnce.Do(func() { close(config.stop) })
 }
 
 func main() {
@@ -84,10 +75,9 @@ func main() {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go watchSignals(sigs, config)
 
-	// wait until the Done channel is terminated before cleanly exiting.
-	<-config.done
-	// make sure that the statsdone channel has closed gracefully
-	<-config.statsDone
-	// make sure the powerdns worker has closed gracefully.
-	<-config.pdnsDone
+	// wait until stop is triggered
+	<-config.stop
+	// wait for workers to exit
+	<-config.pdnsExited
+	<-config.statsExited
 }

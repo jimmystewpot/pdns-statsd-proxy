@@ -1,10 +1,14 @@
 module github.com/jimmystewpot/pdns-statsd-proxy
 
-go 1.23
+go 1.25
 
 require (
-	github.com/quipo/statsd v0.0.0-20180118161217-3d6a5565f314
+	github.com/DataDog/datadog-go/v5 v5.8.2
 	go.uber.org/zap v1.27.1
 )
 
-require go.uber.org/multierr v1.10.0 // indirect
+require (
+	github.com/Microsoft/go-winio v0.6.2 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+)

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -11,6 +12,7 @@ import (
 
 // Config holds all the configuration required to start the service.
 type Config struct {
+	counterCumulativeValues map[string]int64
 	statsHost               *string
 	statsPort               *string
 	interval                *time.Duration
@@ -18,11 +20,11 @@ type Config struct {
 	pdnsPort                *string
 	pdnsAPIKey              *string
 	recursor                *bool
-	counterCumulativeValues map[string]int64
 	StatsChan               chan Statistic
-	done                    chan bool // close global
-	pdnsDone                chan bool // close the pdns worker
-	statsDone               chan bool // close the stats worker
+	stopOnce                sync.Once
+	stop                    chan struct{} // close global stop signal
+	pdnsExited              chan struct{} // closed by the pdns worker
+	statsExited             chan struct{} // closed by the stats worker
 }
 
 func (c *Config) flags() bool {
@@ -38,11 +40,13 @@ func (c *Config) flags() bool {
 	c.statsPort = statsPort
 	c.pdnsHost = pdnsHost
 	c.pdnsPort = pdnsPort
-	// if it's not set via flags or tests, check the environment variable for the API key.
+	// Ensure pdnsAPIKey is always initialised (tests may set it directly).
 	if c.pdnsAPIKey == nil {
-		if *pdnsAPIKey == "" {
-			c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
-		}
+		c.pdnsAPIKey = pdnsAPIKey
+	}
+	// If the flag value is empty, fallback to environment variable.
+	if c.pdnsAPIKey == nil || *c.pdnsAPIKey == "" {
+		c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
 	}
 	c.recursor = recursor
 	c.interval = interval
@@ -76,9 +80,9 @@ func (c *Config) Validate() bool {
 	c.counterCumulativeValues = make(map[string]int64)
 
 	c.StatsChan = make(chan Statistic, statsBufferSize)
-	c.done = make(chan bool, 1)
-	c.pdnsDone = make(chan bool, 1)
-	c.statsDone = make(chan bool, 1)
+	c.stop = make(chan struct{})
+	c.pdnsExited = make(chan struct{})
+	c.statsExited = make(chan struct{})
 	return true
 }
 
