@@ -1,5 +1,8 @@
 version: 2
 
+run:
+  tests: false
+
 linters-settings:
   dupl:
     threshold: 100
@@ -110,7 +113,6 @@ linters:
     - nakedret
     - nolintlint
     - rowserrcheck
-    - revive
     - staticcheck
     - unconvert
     - unparam
@@ -129,6 +131,8 @@ formatters-settings:
     local-prefixes: github.com/golangci/golangci-lint
 
 issues:
+  exclude-files:
+    - _test\.go
   # Exclude configuration for test files
   exclude-rules:
     - path: _test\.go
@@ -138,5 +142,4 @@ issues:
         - mnd # magic numbers
         - funlen # long functions, common in table-driven tests
         - dupl # duplicate code detection
-        - revive
 

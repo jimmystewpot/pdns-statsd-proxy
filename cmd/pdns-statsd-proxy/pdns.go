@@ -22,6 +22,10 @@ const (
 
 	prometheusTypeMinFields = 4
 	prometheusMinFields     = 2
+
+	prometheusMinMajor = 4
+	prometheusMinMinor = 3
+	prometheusMinPatch = 0
 )
 
 // pdnsClient stores the configuration for the powerdns client.
@@ -102,11 +106,22 @@ func (pdns *pdnsClient) Worker(config *Config) {
 				)
 				continue
 			}
+
+			closeBody := func() {
+				if response != nil && response.Body != nil {
+					if err := response.Body.Close(); err != nil {
+						log.Debug("unable to close PowerDNS response body",
+							zap.Error(err),
+						)
+					}
+				}
+			}
 			if pdns.usePrometheus {
 				err = decodePrometheusStats(response, config)
 			} else {
 				err = decodeStats(response, config)
 			}
+			closeBody()
 			if err != nil {
 				log.Error("powerdns decodeStats",
 					zap.Error(err),
@@ -131,37 +146,12 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 		}
 	}()
 
-	prometheusMinVersion := pdnsVersion{major: 4, minor: 3, patch: 0}
-
-	ensurePrometheusMode := func(resp *http.Response) {
-		pdns.versionOnce.Do(func() {
-			version := resp.Header.Get("Server")
-			if v, ok := parsePDNSServerHeader(version); ok {
-				pdns.serverVersion = v
-				pdns.serverVersionParsed = true
-				pdns.usePrometheus = isAtLeast(v, prometheusMinVersion)
-				if pdns.usePrometheus {
-					pdns.Host = pdns.prometheusPath
-				} else {
-					pdns.Host = pdns.legacyPath
-				}
-			}
-		})
-	}
+	prometheusMinVersion := pdnsVersion{major: prometheusMinMajor, minor: prometheusMinMinor, patch: prometheusMinPatch}
 
 	// If this is the first poll, hit the legacy endpoint to discover the server version,
 	// then switch to /metrics for >=4.3.
 	if !pdns.serverVersionParsed {
-		resp, err := pdns.doRequest(pdns.legacyPath)
-		if err != nil {
-			return &http.Response{}, err
-		}
-		ensurePrometheusMode(resp)
-		if pdns.usePrometheus {
-			resp.Body.Close()
-			return pdns.doRequest(pdns.prometheusPath)
-		}
-		return resp, nil
+		return pdns.pollWithDiscovery(prometheusMinVersion)
 	}
 
 	requestURL := pdns.legacyPath
@@ -182,11 +172,52 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 	}
 
 	if response.StatusCode != http.StatusOK {
-		response.Body.Close()
-		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
+		if err := response.Body.Close(); err != nil {
+			log.Debug("unable to close PowerDNS response body",
+				zap.Error(err),
+			)
+		}
+		return &http.Response{}, fmt.Errorf(
+			"expected status_code %d got %d returned from PowerDNS",
+			http.StatusOK,
+			response.StatusCode,
+		)
 	}
 
 	return response, nil
+}
+
+func (pdns *pdnsClient) pollWithDiscovery(prometheusMinVersion pdnsVersion) (*http.Response, error) {
+	ensurePrometheusMode := func(resp *http.Response) {
+		pdns.versionOnce.Do(func() {
+			version := resp.Header.Get("Server")
+			if v, ok := parsePDNSServerHeader(version); ok {
+				pdns.serverVersion = v
+				pdns.serverVersionParsed = true
+				pdns.usePrometheus = isAtLeast(v, prometheusMinVersion)
+				if pdns.usePrometheus {
+					pdns.Host = pdns.prometheusPath
+				} else {
+					pdns.Host = pdns.legacyPath
+				}
+			}
+		})
+	}
+
+	resp, err := pdns.doRequest(pdns.legacyPath)
+	if err != nil {
+		return &http.Response{}, err
+	}
+	ensurePrometheusMode(resp)
+	if pdns.usePrometheus {
+		if err := resp.Body.Close(); err != nil {
+			log.Debug("unable to close PowerDNS response body",
+				zap.Error(err),
+			)
+		}
+		return pdns.doRequest(pdns.prometheusPath)
+	}
+	return resp, nil
 }
 
 func (pdns *pdnsClient) doRequest(url string) (*http.Response, error) {
@@ -202,8 +233,16 @@ func (pdns *pdnsClient) doRequest(url string) (*http.Response, error) {
 		return &http.Response{}, err
 	}
 	if response.StatusCode != http.StatusOK {
-		response.Body.Close()
-		return &http.Response{}, fmt.Errorf("expected status_code %d got %d returned from PowerDNS", http.StatusOK, response.StatusCode)
+		if err := response.Body.Close(); err != nil {
+			log.Debug("unable to close PowerDNS response body",
+				zap.Error(err),
+			)
+		}
+		return &http.Response{}, fmt.Errorf(
+			"expected status_code %d got %d returned from PowerDNS",
+			http.StatusOK,
+			response.StatusCode,
+		)
 	}
 	return response, nil
 }
@@ -262,8 +301,6 @@ func isAtLeast(got pdnsVersion, want pdnsVersion) bool {
 }
 
 func decodeStats(response *http.Response, config *Config) error {
-	defer response.Body.Close()
-
 	stats, err := readLegacyStats(response.Body)
 	if err != nil {
 		return err
@@ -367,8 +404,6 @@ func readInt64MetricValue(valRaw interface{}) (int64, bool) {
 }
 
 func decodePrometheusStats(response *http.Response, config *Config) error {
-	defer response.Body.Close()
-
 	scanner := bufio.NewScanner(response.Body)
 	metricTypes := make(map[string]string)
 	for scanner.Scan() {

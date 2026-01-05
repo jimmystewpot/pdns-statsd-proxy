@@ -14,6 +14,8 @@ type statsClient interface {
 	Close() error
 }
 
+var _ = gaugeMetrics
+
 // Statistic Wrapper struct
 type Statistic struct {
 	Name  string

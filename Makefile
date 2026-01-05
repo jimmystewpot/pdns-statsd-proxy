@@ -43,9 +43,9 @@ lint:
 	@echo ""
 	@echo "***** linting ${TOOL} with golangci-lint *****"
 ifdef INTERACTIVE
-	golangci-lint run -v $(TEST_DIRS)
+	GOFLAGS=-buildvcs=false golangci-lint run -v $(TEST_DIRS)
 else
-	golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
+	GOFLAGS=-buildvcs=false golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
 endif
 .PHONY: lint
 
@@ -79,31 +79,31 @@ pdns-statsd-proxy:
 	@echo "***** Building ${TOOL} *****"
 	git config --global --add safe.directory /build/src/github.com/jimmystewpot/pdns-statsd-proxy
 	git status
-	go build -race -trimpath -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
+	GOFLAGS=-buildvcs=false go build -race -trimpath -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 linux-arm64:
 	@echo ""
 	@echo "***** Building ${TOOL} for Linux ARM64 *****"
-	GOOS=linux GOARCH=arm64 go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
+	GOFLAGS=-buildvcs=false GOOS=linux GOARCH=arm64 go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 linux-x64:
 	@echo ""
 	@echo "***** Building ${TOOL} for Linux x86-64 *****"
-	GOOS=linux GOARCH=amd64 go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
+	GOFLAGS=-buildvcs=false GOOS=linux GOARCH=amd64 go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 linux-arm32:
 	@echo ""
 	@echo "***** Building ${TOOL} for Linux ARM32 *****"
-	GOOS=linux GOARCH=arm go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
+	GOFLAGS=-buildvcs=false GOOS=linux GOARCH=arm go build -race -ldflags="-s -w" -o $(BINPATH)/$(TOOL) ./cmd/$(TOOL)
 	@echo ""
 
 test:
 	@echo ""
 	@echo "***** Testing ${TOOL} *****"
-	go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic -json $(TEST_DIRS) 1> reports/testreport.json
+	GOFLAGS=-buildvcs=false go test -a -v -race -coverprofile=reports/coverage.txt -covermode=atomic -json $(TEST_DIRS) 1> reports/testreport.json
 	@echo ""
 
 

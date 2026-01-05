@@ -45,6 +45,7 @@ jobs:
       - name: Contract Tests (Docker)
         env:
           PDNS_CONTRACT: "1"
+          GOFLAGS: -buildvcs=false
         run: go test -tags contract ./...
   
   snyk-security-scan:
