@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/DataDog/datadog-go/v5 v5.8.2
-	go.uber.org/zap v1.27.0
+	go.uber.org/zap v1.27.1
 )
 
 require (
