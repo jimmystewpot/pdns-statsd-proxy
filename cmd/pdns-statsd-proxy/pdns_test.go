@@ -68,6 +68,48 @@ func TestReadNumericPrefix(t *testing.T) {
 	}
 }
 
+func TestReadInt64MetricValue(t *testing.T) {
+	t.Run("string ok", func(t *testing.T) {
+		got, ok := readInt64MetricValue("42")
+		if !ok || got != 42 {
+			t.Fatalf("readInt64MetricValue(\"42\") = (%d,%v), want (42,true)", got, ok)
+		}
+	})
+
+	t.Run("string invalid", func(t *testing.T) {
+		_, ok := readInt64MetricValue("nope")
+		if ok {
+			t.Fatalf("expected invalid string to return ok=false")
+		}
+	})
+
+	t.Run("float64", func(t *testing.T) {
+		got, ok := readInt64MetricValue(float64(3))
+		if !ok || got != 3 {
+			t.Fatalf("readInt64MetricValue(float64(3)) = (%d,%v), want (3,true)", got, ok)
+		}
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		_, ok := readInt64MetricValue(true)
+		if ok {
+			t.Fatalf("expected unsupported type to return ok=false")
+		}
+	})
+}
+
+func TestUint64ToInt64Clamp(t *testing.T) {
+	maxInt64 := uint64(^uint64(0) >> 1)
+
+	if got := uint64ToInt64Clamp(maxInt64); got != int64(maxInt64) {
+		t.Fatalf("uint64ToInt64Clamp(max) = %d, want %d", got, int64(maxInt64))
+	}
+
+	if got := uint64ToInt64Clamp(maxInt64 + 1); got != int64(maxInt64) {
+		t.Fatalf("uint64ToInt64Clamp(max+1) = %d, want %d", got, int64(maxInt64))
+	}
+}
+
 func TestPoll_PostDiscovery_UsesLegacyPathWhenPrometheusDisabled(t *testing.T) {
 	var gotURL string
 	var gotAPIKey string

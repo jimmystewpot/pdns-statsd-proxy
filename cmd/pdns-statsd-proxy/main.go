@@ -28,6 +28,7 @@ var (
 
 	// flag variables set as globals allows us to test various types of flags without needing to hack around
 	// the flags package.
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
 	statsHost  = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
 	statsPort  = flag.String("statsPort", "8125", "The port that statsd is listening on")
 	pdnsHost   = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")

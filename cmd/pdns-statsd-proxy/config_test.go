@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -41,6 +43,61 @@ func testConfig() *Config {
 		stop:                    make(chan struct{}),
 		pdnsExited:              make(chan struct{}),
 		statsExited:             make(chan struct{}),
+	}
+}
+
+func TestApplyYAMLConfig_InvalidInterval(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
+	statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	histograms = flag.Bool("histograms", false, "")
+	interval = flag.Duration("interval", defaultInterval, "")
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte("interval: not-a-duration\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	if err := applyYAMLConfig(cfgPath, map[string]bool{}); err == nil {
+		t.Fatalf("expected applyYAMLConfig to return error for invalid interval")
+	}
+}
+
+func TestApplyYAMLConfig_IntervalSecondsAndFlagOverride(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
+	statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	histograms = flag.Bool("histograms", false, "")
+	interval = flag.Duration("interval", defaultInterval, "")
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	contents := "statsHost: 10.0.0.1\ninterval: '30'\n"
+	if err := os.WriteFile(cfgPath, []byte(contents), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	setFlags := map[string]bool{"statsHost": true}
+	if err := applyYAMLConfig(cfgPath, setFlags); err != nil {
+		t.Fatalf("applyYAMLConfig() err = %v", err)
+	}
+
+	if *statsHost != "127.0.0.1" {
+		t.Fatalf("expected statsHost to be unchanged due to flag override, got %q", *statsHost)
+	}
+	if *interval != 30*time.Second {
+		t.Fatalf("expected interval to be 30s, got %s", interval.String())
 	}
 }
 

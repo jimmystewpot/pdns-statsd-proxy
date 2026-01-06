@@ -3,16 +3,20 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
+	"go.yaml.in/yaml/v2"
 )
 
 // Config holds all the configuration required to start the service.
 type Config struct {
 	counterCumulativeValues map[string]int64
+	configFile              *string
 	statsHost               *string
 	statsPort               *string
 	interval                *time.Duration
@@ -35,6 +39,39 @@ func (c *Config) flags() bool {
 	}
 	flag.Parse()
 
+	setFlags := make(map[string]bool)
+	flag.Visit(func(f *flag.Flag) {
+		setFlags[f.Name] = true
+	})
+
+	if c.configFile == nil {
+		c.configFile = configFile
+	}
+	if c.configFile != nil && *c.configFile != "" {
+		if !setFlags["config"] {
+			if _, err := os.Stat(*c.configFile); err != nil {
+				if os.IsNotExist(err) {
+					goto afterYAML
+				}
+				log.Error("unable to stat yaml config",
+					zap.String("path", *c.configFile),
+					zap.Error(err),
+				)
+				return false
+			}
+		}
+		err := applyYAMLConfig(*c.configFile, setFlags)
+		if err != nil {
+			log.Error("unable to load yaml config",
+				zap.String("path", *c.configFile),
+				zap.Error(err),
+			)
+			return false
+		}
+	}
+
+afterYAML:
+
 	if c.statsHost == nil {
 		c.statsHost = statsHost
 	}
@@ -54,6 +91,68 @@ func (c *Config) flags() bool {
 	c.interval = interval
 
 	return flag.Parsed()
+}
+
+type yamlConfig struct {
+	StatsHost  *string `yaml:"statsHost"`
+	StatsPort  *string `yaml:"statsPort"`
+	Interval   *string `yaml:"interval"`
+	PDNSHost   *string `yaml:"pdnsHost"`
+	PDNSPort   *string `yaml:"pdnsPort"`
+	APIKey     *string `yaml:"key"`
+	Recursor   *bool   `yaml:"recursor"`
+	Histograms *bool   `yaml:"histograms"`
+}
+
+func applyYAMLConfig(path string, setFlags map[string]bool) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	buf, err := io.ReadAll(f)
+	if err != nil {
+		return err
+	}
+
+	var yc yamlConfig
+	if err := yaml.Unmarshal(buf, &yc); err != nil {
+		return err
+	}
+
+	if yc.StatsHost != nil && !setFlags["statsHost"] {
+		*statsHost = *yc.StatsHost
+	}
+	if yc.StatsPort != nil && !setFlags["statsPort"] {
+		*statsPort = *yc.StatsPort
+	}
+	if yc.PDNSHost != nil && !setFlags["pdnsHost"] {
+		*pdnsHost = *yc.PDNSHost
+	}
+	if yc.PDNSPort != nil && !setFlags["pdnsPort"] {
+		*pdnsPort = *yc.PDNSPort
+	}
+	if yc.APIKey != nil && !setFlags["key"] {
+		*pdnsAPIKey = *yc.APIKey
+	}
+	if yc.Recursor != nil && !setFlags["recursor"] {
+		*recursor = *yc.Recursor
+	}
+	if yc.Histograms != nil && !setFlags["histograms"] {
+		*histograms = *yc.Histograms
+	}
+	if yc.Interval != nil && !setFlags["interval"] {
+		// Accept either Go duration strings (e.g., 15s) or integer seconds.
+		if d, err := time.ParseDuration(*yc.Interval); err == nil {
+			*interval = d
+		} else if secs, err2 := strconv.Atoi(*yc.Interval); err2 == nil {
+			*interval = time.Duration(secs) * time.Second
+		} else {
+			return fmt.Errorf("invalid interval %q", *yc.Interval)
+		}
+	}
+
+	return nil
 }
 
 // Validate the configuration is correct before starting the service.

@@ -464,6 +464,10 @@ func uint64ToInt64Clamp(v uint64) int64 {
 
 func emitPrometheusFamilies(families map[string]*dto.MetricFamily, config *Config, emitHistograms bool) {
 	emit := func(name string, metricType string, val int64) {
+		// Prometheus COUNTERs are cumulative values since process start.
+		// StatsD counters are typically emitted as per-interval deltas, so we mark
+		// cumulative counters specially and convert them to deltas later using
+		// counterCumulativeValues.
 		if metricType == counterCumulative {
 			if _, ok := config.counterCumulativeValues[name]; !ok {
 				config.counterCumulativeValues[name] = -1
@@ -493,6 +497,8 @@ func emitPrometheusFamily(
 	familyType := family.GetType().String()
 	sType := gauge
 	if familyType == "COUNTER" {
+		// Prometheus COUNTERs are cumulative. We treat them as counterCumulative so
+		// the stats worker can compute a delta before emitting to StatsD.
 		sType = counterCumulative
 	}
 
@@ -518,6 +524,8 @@ func emitPrometheusFamily(
 			}
 			emit(name, sType, int64(m.GetUntyped().GetValue()))
 		case "HISTOGRAM":
+			// Histogram support varies across StatsD backends; keep it opt-in.
+			// When enabled we emit only count/sum, which are widely representable.
 			if !emitHistograms || m.Histogram == nil {
 				continue
 			}
