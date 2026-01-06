@@ -1,0 +1,75 @@
+name: Auto tag patch (recent updates)
+
+on:
+  schedule:
+    - cron: "17 2 1 * *" # monthly
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Decide if a new stable tag is needed
+        id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          # Only stable semver tags: vMAJOR.MINOR.PATCH (ignores -alpha, -rc, etc)
+          latest_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)"
+          if [ -z "${latest_tag}" ]; then
+            echo "No stable semver tags found. Create an initial vX.Y.Z tag first."
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Count commits since latest tag, but only those within the last 30 days
+          commits_since_tag_recent="$(git log "${latest_tag}..HEAD" --since='30 days ago' --oneline | wc -l | tr -d ' ')"
+
+          echo "latest_tag=${latest_tag}" >> "$GITHUB_OUTPUT"
+          echo "commits_since_tag_recent=${commits_since_tag_recent}" >> "$GITHUB_OUTPUT"
+
+          if [ "${commits_since_tag_recent}" -gt 0 ]; then
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next patch tag
+        id: bump
+        if: steps.decide.outputs.should_tag == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          t="${{ steps.decide.outputs.latest_tag }}" # v1.2.3
+          v="${t#v}"                                 # 1.2.3
+          IFS='.' read -r major minor patch <<< "$v"
+          patch=$((patch + 1))
+          echo "next_tag=v${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+
+      - name: Create and push tag
+        if: steps.bump.outputs.next_tag != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          next="${{ steps.bump.outputs.next_tag }}"
+
+          if git rev-parse "$next" >/dev/null 2>&1; then
+            echo "Tag ${next} already exists; exiting."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$next" -m "chore: patch release (recent updates)"
+          git push origin "$next"
