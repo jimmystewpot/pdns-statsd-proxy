@@ -233,6 +233,20 @@ func TestConfigValidate_FailsWhenExplicitConfigMissing(t *testing.T) {
 	}
 }
 
+func TestConfigCheckStatsHost_EmptyFails(t *testing.T) {
+	c := &Config{statsHost: stringPtr("")}
+	if err := c.CheckStatsHost(); err == nil {
+		t.Fatalf("expected CheckStatsHost() to return an error for empty statsHost")
+	}
+}
+
+func TestConfigCheckStatsHost_NonEmptySucceeds(t *testing.T) {
+	c := &Config{statsHost: stringPtr("127.0.0.1")}
+	if err := c.CheckStatsHost(); err != nil {
+		t.Fatalf("expected CheckStatsHost() to succeed, got err = %v", err)
+	}
+}
+
 func TestApplyYAMLConfig_InvalidInterval(t *testing.T) {
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
