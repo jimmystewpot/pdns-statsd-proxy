@@ -8,7 +8,7 @@ import (
 //
 //nolint:nolintlint //Logger is used to implement the logger interface for statsd.
 type Logger interface {
-	Println(v ...interface{})
+	Println(v ...any)
 }
 
 type logger struct{}
@@ -16,7 +16,7 @@ type logger struct{}
 var _ Logger = (*logger)(nil)
 var _ = (*logger).Println
 
-func (l *logger) Println(v ...interface{}) {
+func (l *logger) Println(v ...any) {
 	for _, entry := range v {
 		if val, ok := entry.(string); ok {
 			log.Info("BufferedStatsdClient",

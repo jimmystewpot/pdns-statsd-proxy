@@ -13,10 +13,36 @@ import (
 	"time"
 )
 
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+type trackCloseBody struct {
+	r      io.Reader
+	closed *bool
+}
+
+func (b trackCloseBody) Read(p []byte) (int, error) { return b.r.Read(p) }
+
+func (b trackCloseBody) Close() error {
+	if b.closed != nil {
+		*b.closed = true
+	}
+	return nil
+}
+
 func readpdnsTestData(version string) string {
 	vers := strings.ReplaceAll(version, ".", "_")
 	jsonFile := fmt.Sprintf("pdns_response_test_data/%s.json", vers)
 	f, _ := os.ReadFile(jsonFile)
+
+	return string(f)
+}
+
+func readpdnsPromTestData(filename string) string {
+	f, _ := os.ReadFile(fmt.Sprintf("pdns_response_test_data/%s", filename))
 
 	return string(f)
 }
@@ -39,6 +65,215 @@ func TestReadNumericPrefix(t *testing.T) {
 				t.Fatalf("readNumericPrefix(%q) = %q, want %q", tt.in, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPoll_PostDiscovery_UsesLegacyPathWhenPrometheusDisabled(t *testing.T) {
+	var gotURL string
+	var gotAPIKey string
+	var gotUserAgent string
+	closed := false
+
+	pdns := &pdnsClient{
+		Client: &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			gotURL = r.URL.String()
+			gotAPIKey = r.Header.Get("X-API-Key")
+			gotUserAgent = r.Header.Get("User-Agent")
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       trackCloseBody{r: strings.NewReader("ok"), closed: &closed},
+				Header:     make(http.Header),
+				Request:    r,
+			}, nil
+		})},
+		APIKey:              "test-key",
+		legacyPath:          "http://example.local/legacy",
+		prometheusPath:      "http://example.local/metrics",
+		Host:                "http://example.local/legacy",
+		serverVersionParsed: true,
+		usePrometheus:       false,
+	}
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if gotURL != pdns.legacyPath {
+		t.Fatalf("expected legacy URL %q, got %q", pdns.legacyPath, gotURL)
+	}
+	if gotAPIKey != "test-key" {
+		t.Fatalf("expected X-API-Key %q, got %q", "test-key", gotAPIKey)
+	}
+	if gotUserAgent != provider {
+		t.Fatalf("expected User-Agent %q, got %q", provider, gotUserAgent)
+	}
+	if closed {
+		t.Fatalf("did not expect response body to be closed by Poll() on success")
+	}
+}
+
+func TestPoll_PostDiscovery_UsesPrometheusPathWhenEnabled(t *testing.T) {
+	config := testConfig()
+	_ = config
+
+	var gotURL string
+	closed := false
+
+	pdns := &pdnsClient{
+		Client: &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			gotURL = r.URL.String()
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       trackCloseBody{r: strings.NewReader("ok"), closed: &closed},
+				Header:     make(http.Header),
+				Request:    r,
+			}, nil
+		})},
+		APIKey:              "test-key",
+		legacyPath:          "http://example.local/legacy",
+		prometheusPath:      "http://example.local/metrics",
+		Host:                "http://example.local/metrics",
+		serverVersionParsed: true,
+		usePrometheus:       true,
+	}
+
+	resp, err := pdns.Poll()
+	if err != nil {
+		t.Fatalf("Poll() error = %v", err)
+	}
+	defer resp.Body.Close()
+
+	if gotURL != pdns.prometheusPath {
+		t.Fatalf("expected prometheus URL %q, got %q", pdns.prometheusPath, gotURL)
+	}
+	if closed {
+		t.Fatalf("did not expect response body to be closed by Poll() on success")
+	}
+}
+
+func TestPoll_Non200_ClosesBodyAndReturnsError(t *testing.T) {
+	closed := false
+
+	pdns := &pdnsClient{
+		Client: &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Body:       trackCloseBody{r: strings.NewReader("nope"), closed: &closed},
+				Header:     make(http.Header),
+				Request:    r,
+			}, nil
+		})},
+		APIKey:              "test-key",
+		legacyPath:          "http://example.local/legacy",
+		prometheusPath:      "http://example.local/metrics",
+		Host:                "http://example.local/legacy",
+		serverVersionParsed: true,
+		usePrometheus:       false,
+	}
+
+	_, err := pdns.Poll()
+	if err == nil {
+		t.Fatalf("expected Poll() to return error")
+	}
+	if !closed {
+		t.Fatalf("expected response body to be closed on non-200 status")
+	}
+}
+
+func TestDecodePrometheusStats_Fixture_Auth440(t *testing.T) {
+	config := testConfig()
+	config.histograms = boolPtr(false)
+
+	body := readpdnsPromTestData("auth-4_4_0_prometheus.prom")
+	if body == "" {
+		t.Fatalf("expected auth-4_4_0_prometheus.prom fixture to be readable")
+	}
+
+	resp := &http.Response{
+		Body:   io.NopCloser(strings.NewReader(body)),
+		Header: make(http.Header),
+	}
+
+	if err := decodePrometheusStats(resp, config); err != nil {
+		t.Fatalf("decodePrometheusStats() error = %v", err)
+	}
+
+	got := make(map[string]Statistic)
+	for len(config.StatsChan) > 0 {
+		s := <-config.StatsChan
+		got[s.Name] = s
+	}
+
+	// Validate at least one known gauge and one known counter from the fixture.
+	fd, ok := got["pdns_auth_fd_usage"]
+	if !ok {
+		t.Fatalf("expected metric pdns_auth_fd_usage")
+	}
+	if fd.Type != gauge {
+		t.Fatalf("pdns_auth_fd_usage = %+v, want type=%s", fd, gauge)
+	}
+
+	cpu, ok := got["pdns_auth_cpu_iowait"]
+	if !ok {
+		t.Fatalf("expected metric pdns_auth_cpu_iowait")
+	}
+	if cpu.Type != counterCumulative {
+		t.Fatalf("pdns_auth_cpu_iowait = %+v, want type=%s", cpu, counterCumulative)
+	}
+	if _, ok := config.counterCumulativeValues["pdns_auth_cpu_iowait"]; !ok {
+		t.Fatalf("expected counterCumulativeValues to contain pdns_auth_cpu_iowait")
+	}
+}
+
+func TestDecodePrometheusStats_HistogramsGated(t *testing.T) {
+	base := strings.Join([]string{
+		"# HELP my_hist Example histogram",
+		"# TYPE my_hist histogram",
+		"my_hist_bucket{le=\"1\"} 0",
+		"my_hist_bucket{le=\"+Inf\"} 2",
+		"my_hist_sum 3",
+		"my_hist_count 2",
+	}, "\n")
+
+	{ // default: histograms disabled
+		config := testConfig()
+		config.histograms = boolPtr(false)
+		resp := &http.Response{Body: io.NopCloser(strings.NewReader(base)), Header: make(http.Header)}
+		if err := decodePrometheusStats(resp, config); err != nil {
+			t.Fatalf("decodePrometheusStats() error = %v", err)
+		}
+		for len(config.StatsChan) > 0 {
+			s := <-config.StatsChan
+			if s.Name == "my_hist_count" || s.Name == "my_hist_sum" {
+				t.Fatalf("did not expect histogram metric %s to be emitted when histograms=false", s.Name)
+			}
+		}
+	}
+
+	{ // histograms enabled
+		config := testConfig()
+		config.histograms = boolPtr(true)
+		resp := &http.Response{Body: io.NopCloser(strings.NewReader(base)), Header: make(http.Header)}
+		if err := decodePrometheusStats(resp, config); err != nil {
+			t.Fatalf("decodePrometheusStats() error = %v", err)
+		}
+
+		seenCount := false
+		seenSum := false
+		for len(config.StatsChan) > 0 {
+			s := <-config.StatsChan
+			switch s.Name {
+			case "my_hist_count":
+				seenCount = true
+			case "my_hist_sum":
+				seenSum = true
+			}
+		}
+		if !seenCount || !seenSum {
+			t.Fatalf("expected histogram metrics to be emitted when histograms=true (count=%v sum=%v)", seenCount, seenSum)
+		}
 	}
 }
 

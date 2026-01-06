@@ -35,6 +35,7 @@ func testConfig() *Config {
 		pdnsPort:                stringPtr("9999"),
 		pdnsAPIKey:              stringPtr("x-api-key"),
 		recursor:                boolPtr(true),
+		histograms:              boolPtr(false),
 		counterCumulativeValues: make(map[string]int64),
 		StatsChan:               make(chan Statistic, 1000),
 		stop:                    make(chan struct{}),

@@ -20,6 +20,7 @@ type Config struct {
 	pdnsPort                *string
 	pdnsAPIKey              *string
 	recursor                *bool
+	histograms              *bool
 	StatsChan               chan Statistic
 	stopOnce                sync.Once
 	stop                    chan struct{} // close global stop signal
@@ -49,6 +50,7 @@ func (c *Config) flags() bool {
 		c.pdnsAPIKey = getEnvStr("PDNS_API_KEY", "")
 	}
 	c.recursor = recursor
+	c.histograms = histograms
 	c.interval = interval
 
 	return flag.Parsed()
