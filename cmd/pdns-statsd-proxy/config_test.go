@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -35,11 +37,268 @@ func testConfig() *Config {
 		pdnsPort:                stringPtr("9999"),
 		pdnsAPIKey:              stringPtr("x-api-key"),
 		recursor:                boolPtr(true),
+		histograms:              boolPtr(false),
 		counterCumulativeValues: make(map[string]int64),
 		StatsChan:               make(chan Statistic, 1000),
 		stop:                    make(chan struct{}),
 		pdnsExited:              make(chan struct{}),
 		statsExited:             make(chan struct{}),
+	}
+}
+
+func resetFlagsForTest(t *testing.T, args []string) {
+	oldCommandLine := flag.CommandLine
+	oldArgs := os.Args
+	oldConfigFile := configFile
+	oldStatsHost := statsHost
+	oldStatsPort := statsPort
+	oldPDNSHost := pdnsHost
+	oldPDNSPort := pdnsPort
+	oldPDNSAPIKey := pdnsAPIKey
+	oldRecursor := recursor
+	oldHistograms := histograms
+	oldInterval := interval
+
+	t.Cleanup(func() {
+		flag.CommandLine = oldCommandLine
+		os.Args = oldArgs
+		configFile = oldConfigFile
+		statsHost = oldStatsHost
+		statsPort = oldStatsPort
+		pdnsHost = oldPDNSHost
+		pdnsPort = oldPDNSPort
+		pdnsAPIKey = oldPDNSAPIKey
+		recursor = oldRecursor
+		histograms = oldHistograms
+		interval = oldInterval
+	})
+
+	flag.CommandLine = flag.NewFlagSet(args[0], flag.ContinueOnError)
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
+	statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	histograms = flag.Bool("histograms", false, "")
+	interval = flag.Duration("interval", defaultInterval, "")
+	os.Args = args
+}
+
+func TestConfigFlags_DefaultMissingConfigIgnored(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy"})
+
+	c := &Config{}
+	if !c.flags() {
+		t.Fatalf("expected flags() to succeed when default config is missing")
+	}
+}
+
+func TestConfigFlags_ExplicitMissingConfigFails(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	missing := filepath.Join(t.TempDir(), "missing.yaml")
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy", "-config", missing})
+
+	c := &Config{}
+	if c.flags() {
+		t.Fatalf("expected flags() to fail when -config is explicitly set to a missing file")
+	}
+}
+
+func TestConfigFlags_YAMLApplied(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	contents := "statsHost: 10.0.0.1\ninterval: '30'\n"
+	if err := os.WriteFile(cfgPath, []byte(contents), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy", "-config", cfgPath})
+
+	c := &Config{}
+	if !c.flags() {
+		t.Fatalf("expected flags() to succeed")
+	}
+	if c.statsHost == nil || *c.statsHost != "10.0.0.1" {
+		t.Fatalf("expected statsHost to be loaded from yaml, got %v", c.statsHost)
+	}
+	if c.interval == nil || *c.interval != 30*time.Second {
+		t.Fatalf("expected interval to be loaded from yaml (30s), got %v", c.interval)
+	}
+}
+
+func TestConfigFlags_CLiOverridesYAML(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	contents := "statsHost: 10.0.0.1\ninterval: '30'\n"
+	if err := os.WriteFile(cfgPath, []byte(contents), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy", "-config", cfgPath, "-statsHost", "127.0.0.2"})
+
+	c := &Config{}
+	if !c.flags() {
+		t.Fatalf("expected flags() to succeed")
+	}
+	if c.statsHost == nil || *c.statsHost != "127.0.0.2" {
+		t.Fatalf("expected statsHost to be overridden by CLI, got %v", c.statsHost)
+	}
+	if c.interval == nil || *c.interval != 30*time.Second {
+		t.Fatalf("expected interval to still come from yaml (30s), got %v", c.interval)
+	}
+}
+
+func TestConfigValidate_SuccessInitialisesInternals(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy"})
+
+	c := &Config{}
+	if !c.Validate() {
+		t.Fatalf("expected Validate() to succeed")
+	}
+	if c.counterCumulativeValues == nil {
+		t.Fatalf("expected counterCumulativeValues to be initialised")
+	}
+	if c.StatsChan == nil {
+		t.Fatalf("expected StatsChan to be initialised")
+	}
+	if c.stop == nil {
+		t.Fatalf("expected stop channel to be initialised")
+	}
+	if c.pdnsExited == nil {
+		t.Fatalf("expected pdnsExited channel to be initialised")
+	}
+	if c.statsExited == nil {
+		t.Fatalf("expected statsExited channel to be initialised")
+	}
+}
+
+func TestConfigValidate_FailsWhenStatsHostEmpty(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy", "-statsHost", ""})
+
+	c := &Config{}
+	if c.Validate() {
+		t.Fatalf("expected Validate() to fail when statsHost is empty")
+	}
+}
+
+func TestConfigValidate_FailsWhenAPIKeyMissing(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy"})
+
+	// Ensure env fallback is not available.
+	os.Unsetenv("PDNS_API_KEY")
+
+	c := &Config{}
+	if c.Validate() {
+		t.Fatalf("expected Validate() to fail when API key is missing")
+	}
+}
+
+func TestConfigValidate_FailsWhenExplicitConfigMissing(t *testing.T) {
+	log = zap.NewExample(zap.AddCaller(), zap.WithCaller(true)).Named(provider)
+	os.Setenv("PDNS_API_KEY", "x-api-key")
+	t.Cleanup(func() { os.Unsetenv("PDNS_API_KEY") })
+
+	missing := filepath.Join(t.TempDir(), "missing.yaml")
+	resetFlagsForTest(t, []string{"pdns-statsd-proxy", "-config", missing})
+
+	c := &Config{}
+	if c.Validate() {
+		t.Fatalf("expected Validate() to fail when flags() fails due to missing -config file")
+	}
+}
+
+func TestConfigCheckStatsHost_EmptyFails(t *testing.T) {
+	c := &Config{statsHost: stringPtr("")}
+	if err := c.CheckStatsHost(); err == nil {
+		t.Fatalf("expected CheckStatsHost() to return an error for empty statsHost")
+	}
+}
+
+func TestConfigCheckStatsHost_NonEmptySucceeds(t *testing.T) {
+	c := &Config{statsHost: stringPtr("127.0.0.1")}
+	if err := c.CheckStatsHost(); err != nil {
+		t.Fatalf("expected CheckStatsHost() to succeed, got err = %v", err)
+	}
+}
+
+func TestApplyYAMLConfig_InvalidInterval(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
+	statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	histograms = flag.Bool("histograms", false, "")
+	interval = flag.Duration("interval", defaultInterval, "")
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(cfgPath, []byte("interval: not-a-duration\n"), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	if err := applyYAMLConfig(cfgPath, map[string]bool{}); err == nil {
+		t.Fatalf("expected applyYAMLConfig to return error for invalid interval")
+	}
+}
+
+func TestApplyYAMLConfig_IntervalSecondsAndFlagOverride(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	configFile = flag.String("config", "/etc/pdns-statsd-proxy/config.yaml", "Path to YAML config file")
+	statsHost = flag.String("statsHost", "127.0.0.1", "The statsd server to emit metrics")
+	statsPort = flag.String("statsPort", "8125", "The port that statsd is listening on")
+	pdnsHost = flag.String("pdnsHost", "127.0.0.1", "The host to query for powerdns statistics")
+	pdnsPort = flag.String("pdnsPort", "8080", "The port that PowerDNS API is accepting connections")
+	pdnsAPIKey = flag.String("key", "", "The api key for the powerdns api")
+	recursor = flag.Bool("recursor", true, "Query recursor statistics")
+	histograms = flag.Bool("histograms", false, "")
+	interval = flag.Duration("interval", defaultInterval, "")
+
+	dir := t.TempDir()
+	cfgPath := filepath.Join(dir, "config.yaml")
+	contents := "statsHost: 10.0.0.1\ninterval: '30'\n"
+	if err := os.WriteFile(cfgPath, []byte(contents), 0o600); err != nil {
+		t.Fatalf("WriteFile() err = %v", err)
+	}
+
+	setFlags := map[string]bool{"statsHost": true}
+	if err := applyYAMLConfig(cfgPath, setFlags); err != nil {
+		t.Fatalf("applyYAMLConfig() err = %v", err)
+	}
+
+	if *statsHost != "127.0.0.1" {
+		t.Fatalf("expected statsHost to be unchanged due to flag override, got %q", *statsHost)
+	}
+	if *interval != 30*time.Second {
+		t.Fatalf("expected interval to be 30s, got %s", interval.String())
 	}
 }
 

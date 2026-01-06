@@ -7,8 +7,20 @@ on:
 
 permissions:
   contents: write
-  # packages: write
-  # issues: write
+  actions: none
+  artifact-metadata: none
+  attestations: none
+  checks: none
+  deployments: none
+  id-token: none
+  issues: none
+  models: none
+  discussions: none
+  packages: none
+  pages: none
+  pull-requests: none
+  security-events: none
+  statuses: none
 
 jobs:
   goreleaser:
@@ -36,3 +48,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_MAINTAINER: ${{ vars.GORELEASER_MAINTAINER || vars.GORELEASER_MAINTANER }}

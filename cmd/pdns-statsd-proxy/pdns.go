@@ -12,16 +12,19 @@ import (
 	"sync"
 	"time"
 
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"go.uber.org/zap"
 )
 
 const (
+	unableToClosePDNSResponseBodyMsg = "unable to close PowerDNS response body"
+	prometheusSampleMinFields        = 2
+
 	serverVersionSplitParts = 4
 	serverVersionMinParts   = 2
 	serverVersionPatchPart  = 3
-
-	prometheusTypeMinFields = 4
-	prometheusMinFields     = 2
 
 	prometheusMinMajor = 4
 	prometheusMinMinor = 3
@@ -110,7 +113,7 @@ func (pdns *pdnsClient) Worker(config *Config) {
 			closeBody := func() {
 				if response != nil && response.Body != nil {
 					if err := response.Body.Close(); err != nil {
-						log.Debug("unable to close PowerDNS response body",
+						log.Debug(unableToClosePDNSResponseBodyMsg,
 							zap.Error(err),
 						)
 					}
@@ -173,7 +176,7 @@ func (pdns *pdnsClient) Poll() (*http.Response, error) {
 
 	if response.StatusCode != http.StatusOK {
 		if err := response.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -211,7 +214,7 @@ func (pdns *pdnsClient) pollWithDiscovery(prometheusMinVersion pdnsVersion) (*ht
 	ensurePrometheusMode(resp)
 	if pdns.usePrometheus {
 		if err := resp.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -234,7 +237,7 @@ func (pdns *pdnsClient) doRequest(url string) (*http.Response, error) {
 	}
 	if response.StatusCode != http.StatusOK {
 		if err := response.Body.Close(); err != nil {
-			log.Debug("unable to close PowerDNS response body",
+			log.Debug(unableToClosePDNSResponseBodyMsg,
 				zap.Error(err),
 			)
 		}
@@ -290,7 +293,7 @@ func readNumericPrefix(s string) string {
 	return s
 }
 
-func isAtLeast(got pdnsVersion, want pdnsVersion) bool {
+func isAtLeast(got, want pdnsVersion) bool {
 	if got.major != want.major {
 		return got.major > want.major
 	}
@@ -404,62 +407,135 @@ func readInt64MetricValue(valRaw interface{}) (int64, bool) {
 }
 
 func decodePrometheusStats(response *http.Response, config *Config) error {
-	scanner := bufio.NewScanner(response.Body)
-	metricTypes := make(map[string]string)
+	// expfmt's parser is strict and fails on malformed sample lines.
+	// Historically this project skipped malformed lines (e.g., non-numeric values),
+	// so we filter those out before parsing.
+	emitHistograms := config != nil && config.histograms != nil && *config.histograms
+	cleaned, err := cleanPrometheusBody(response.Body)
+	if err != nil {
+		return err
+	}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
+	families, err := parser.TextToMetricFamilies(cleaned)
+	if err != nil {
+		return err
+	}
+	emitPrometheusFamilies(families, config, emitHistograms)
+	return nil
+}
+
+func cleanPrometheusBody(body io.Reader) (io.Reader, error) {
+	var cleaned strings.Builder
+	scanner := bufio.NewScanner(body)
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
 		if strings.HasPrefix(line, "#") {
-			if strings.HasPrefix(line, "# TYPE ") {
-				fields := strings.Fields(line)
-				// # TYPE <metric_name> <counter|gauge|...>
-				if len(fields) >= prometheusTypeMinFields {
-					metricTypes[fields[2]] = fields[3]
-				}
-			}
+			cleaned.WriteString(line)
+			cleaned.WriteByte('\n')
 			continue
 		}
 
 		fields := strings.Fields(line)
-		if len(fields) < prometheusMinFields {
+		if len(fields) < prometheusSampleMinFields {
 			continue
 		}
-
-		nameRaw := fields[0]
-		name := nameRaw
-		if idx := strings.IndexByte(nameRaw, '{'); idx >= 0 {
-			name = nameRaw[:idx]
-		}
-		if name == "" {
+		if _, err := strconv.ParseFloat(fields[1], 64); err != nil {
 			continue
 		}
+		cleaned.WriteString(line)
+		cleaned.WriteByte('\n')
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return strings.NewReader(cleaned.String()), nil
+}
 
-		f, err := strconv.ParseFloat(fields[1], 64)
-		if err != nil {
-			continue
-		}
-		val := int64(f)
+func uint64ToInt64Clamp(v uint64) int64 {
+	max := ^uint64(0) >> 1
+	if v > max {
+		return int64(max)
+	}
+	return int64(v)
+}
 
-		t := metricTypes[name]
-		statType := gauge
-		if t == "counter" {
-			statType = counterCumulative
-		}
-
-		if statType == counterCumulative {
+func emitPrometheusFamilies(families map[string]*dto.MetricFamily, config *Config, emitHistograms bool) {
+	emit := func(name string, metricType string, val int64) {
+		// Prometheus COUNTERs are cumulative values since process start.
+		// StatsD counters are typically emitted as per-interval deltas, so we mark
+		// cumulative counters specially and convert them to deltas later using
+		// counterCumulativeValues.
+		if metricType == counterCumulative {
 			if _, ok := config.counterCumulativeValues[name]; !ok {
 				config.counterCumulativeValues[name] = -1
 			}
 		}
+		config.StatsChan <- Statistic{Name: name, Type: metricType, Value: val}
+	}
 
-		config.StatsChan <- Statistic{Name: name, Type: statType, Value: val}
+	for _, family := range families {
+		emitPrometheusFamily(family, emit, emitHistograms)
 	}
-	if err := scanner.Err(); err != nil {
-		return err
+}
+
+func emitPrometheusFamily(
+	family *dto.MetricFamily,
+	emit func(name string, metricType string, val int64),
+	emitHistograms bool,
+) {
+	if family == nil {
+		return
 	}
-	return nil
+	name := family.GetName()
+	if name == "" {
+		return
+	}
+
+	familyType := family.GetType().String()
+	sType := gauge
+	if familyType == "COUNTER" {
+		// Prometheus COUNTERs are cumulative. We treat them as counterCumulative so
+		// the stats worker can compute a delta before emitting to StatsD.
+		sType = counterCumulative
+	}
+
+	for _, m := range family.Metric {
+		if m == nil {
+			continue
+		}
+
+		switch familyType {
+		case "COUNTER":
+			if m.Counter == nil {
+				continue
+			}
+			emit(name, sType, int64(m.GetCounter().GetValue()))
+		case "GAUGE":
+			if m.Gauge == nil {
+				continue
+			}
+			emit(name, sType, int64(m.GetGauge().GetValue()))
+		case "UNTYPED":
+			if m.Untyped == nil {
+				continue
+			}
+			emit(name, sType, int64(m.GetUntyped().GetValue()))
+		case "HISTOGRAM":
+			// Histogram support varies across StatsD backends; keep it opt-in.
+			// When enabled we emit only count/sum, which are widely representable.
+			if !emitHistograms || m.Histogram == nil {
+				continue
+			}
+			h := m.GetHistogram()
+			emit(name+"_count", counterCumulative, uint64ToInt64Clamp(h.GetSampleCount()))
+			emit(name+"_sum", counterCumulative, int64(h.GetSampleSum()))
+		default:
+			continue
+		}
+	}
 }
 
 func decodeStringStat(response *http.Response, stat pdnsStat, config *Config, unknown bool) error {

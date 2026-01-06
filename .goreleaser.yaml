@@ -68,7 +68,7 @@ builds:
 nfpms:
   - id: pdns-statsd-proxy
     package_name: pdns-statsd-proxy
-    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    file_name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     ids:
       - pdns-statsd-proxy
     formats:
@@ -113,7 +113,7 @@ sboms:
   - id: pdns-statsd-proxy
 
     documents:
-      - "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}_{{ .Target }}.sbom.json"
+      - "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}{{ .Target }}.sbom.json"
 
     # Path to the SBOM generator command
     #

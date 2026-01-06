@@ -18,6 +18,29 @@ func (errStatsClient) Gauge(string, float64, []string, float64) error { return i
 func (errStatsClient) Count(string, int64, []string, float64) error   { return io.ErrClosedPipe }
 func (errStatsClient) Close() error                                   { return nil }
 
+type closeErrStatsClient struct{}
+
+func (closeErrStatsClient) Gauge(string, float64, []string, float64) error { return nil }
+func (closeErrStatsClient) Count(string, int64, []string, float64) error   { return nil }
+func (closeErrStatsClient) Close() error                                   { return io.ErrClosedPipe }
+
+type recordStatsClient struct {
+	countCalls []struct {
+		name  string
+		value int64
+	}
+}
+
+func (r *recordStatsClient) Gauge(string, float64, []string, float64) error { return nil }
+func (r *recordStatsClient) Count(name string, value int64, tags []string, rate float64) error {
+	r.countCalls = append(r.countCalls, struct {
+		name  string
+		value int64
+	}{name: name, value: value})
+	return nil
+}
+func (r *recordStatsClient) Close() error { return nil }
+
 func TestGaugeMetrics(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -44,6 +67,65 @@ func TestGaugeMetrics(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestStatsWorker_ExitsWhenStatsChanClosed(t *testing.T) {
+	config := testConfig()
+	stats = errStatsClient{}
+
+	go statsWorker(config)
+	close(config.StatsChan)
+
+	select {
+	case <-config.statsExited:
+		return
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for stats worker to exit")
+	}
+}
+
+func TestStatsWorker_StopsOnStopChannelAndAttemptsClose(t *testing.T) {
+	config := testConfig()
+	stats = closeErrStatsClient{}
+
+	go statsWorker(config)
+	close(config.stop)
+
+	select {
+	case <-config.statsExited:
+		return
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("timed out waiting for stats worker to exit")
+	}
+}
+
+func Test_processStats_CounterCumulative_SkipFirstThenEmitDelta(t *testing.T) {
+	recorder := &recordStatsClient{}
+	stats = recorder
+
+	counters := map[string]int64{"foo": -1}
+
+	// First value should not emit a delta (spike avoidance), but should update stored value.
+	if err := processStats(Statistic{Name: "foo", Type: counterCumulative, Value: 10}, counters); err != nil {
+		t.Fatalf("processStats() err = %v", err)
+	}
+	if counters["foo"] != 10 {
+		t.Fatalf("expected stored counter value to be updated to 10, got %d", counters["foo"])
+	}
+	if len(recorder.countCalls) != 0 {
+		t.Fatalf("did not expect Count to be called on first value")
+	}
+
+	// Second value should emit delta (15 - 10 = 5).
+	if err := processStats(Statistic{Name: "foo", Type: counterCumulative, Value: 15}, counters); err != nil {
+		t.Fatalf("processStats() err = %v", err)
+	}
+	if len(recorder.countCalls) != 1 {
+		t.Fatalf("expected 1 Count call, got %d", len(recorder.countCalls))
+	}
+	if recorder.countCalls[0].name != "foo" || recorder.countCalls[0].value != 5 {
+		t.Fatalf("unexpected Count call: %+v", recorder.countCalls[0])
 	}
 }
 
