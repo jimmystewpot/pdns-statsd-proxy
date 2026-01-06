@@ -130,6 +130,50 @@ Will output an artifact to *$PWD/bin*
 
 # Install
 
+## From GitHub Releases
+
+GitHub Releases publish pre-built artifacts for common OS/architecture combinations:
+
+- `.deb` (Debian/Ubuntu)
+- `.rpm` (RHEL/Fedora/Rocky/Alma/SUSE)
+- `.tar.gz` (generic archive containing the binary)
+
+Pick the correct asset for your platform from:
+
+https://github.com/jimmystewpot/pdns-statsd-proxy/releases
+
+### Debian/Ubuntu (`.deb`)
+
+```bash
+sudo dpkg -i ./pdns-statsd-proxy_<version>_linux_<arch>.deb
+sudo systemctl daemon-reload
+sudo systemctl enable --now pdns-statsd-proxy
+```
+
+### RHEL/Fedora/Rocky/Alma/SUSE (`.rpm`)
+
+```bash
+sudo rpm -Uvh ./pdns-statsd-proxy_<version>_linux_<arch>.rpm
+sudo systemctl daemon-reload
+sudo systemctl enable --now pdns-statsd-proxy
+```
+
+### Generic Linux (`.tar.gz`)
+
+```bash
+tar -xzf ./pdns-statsd-proxy_<version>_linux_<arch>.tar.gz
+sudo install -m 0755 pdns-statsd-proxy /usr/local/bin/pdns-statsd-proxy
+pdns-statsd-proxy -h
+```
+
+If you want systemd integration when installing from the archive, use the packaged unit file:
+
+```bash
+sudo install -m 0644 systemd/pdns-statsd-proxy.service /etc/systemd/system/pdns-statsd-proxy.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now pdns-statsd-proxy
+```
+
 ```bash
 make install
 ```
