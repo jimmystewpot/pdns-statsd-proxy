@@ -6,6 +6,10 @@ run:
 linters-settings:
   dupl:
     threshold: 100
+  cyclop:
+    # The maximal code complexity to report.
+    # Default: 10
+    max-complexity: 15
   exhaustive:
     default-signifies-exhaustive: false
   funlen:
@@ -28,7 +32,7 @@ linters-settings:
       - paramTypeCombine
       - unnamedResult
   gocyclo:
-    min-complexity: 16
+    min-complexity: 15
   govet:
     disable-all: true
     # Enable analyzers by name.
@@ -51,6 +55,7 @@ linters-settings:
       - cgocall
       - composites
       - copylocks
+      - cyclop
       - deepequalerrors
       - defers
       - directive
@@ -58,6 +63,9 @@ linters-settings:
       - fieldalignment
       - findcall
       - framepointer
+      - govet
+      - gocyclo
+      - gocritic
       - httpresponse
       - ifaceassert
       - loopclosure
