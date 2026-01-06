@@ -48,4 +48,4 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_MAINTAINER: ${{ env.GORELEASER_MAINTAINER }}
+          GORELEASER_MAINTAINER: ${{ vars.GORELEASER_MAINTAINER || vars.GORELEASER_MAINTANER }}

@@ -33,6 +33,23 @@ type Config struct {
 	statsExited             chan struct{} // closed by the stats worker
 }
 
+func shouldLoadYAMLConfig(path string, configFlagExplicit bool) (bool, error) {
+	if path == "" {
+		return false, nil
+	}
+	// If the operator didn't explicitly set -config, treat a missing default config
+	// file as "no config" rather than a startup error.
+	if !configFlagExplicit {
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				return false, nil
+			}
+			return false, err
+		}
+	}
+	return true, nil
+}
+
 func (c *Config) flags() bool {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] \n", os.Args[0])
@@ -49,29 +66,25 @@ func (c *Config) flags() bool {
 		c.configFile = configFile
 	}
 	if c.configFile != nil && *c.configFile != "" {
-		if !setFlags["config"] {
-			if _, err := os.Stat(*c.configFile); err != nil {
-				if os.IsNotExist(err) {
-					goto afterYAML
-				}
-				log.Error("unable to stat yaml config",
+		load, err := shouldLoadYAMLConfig(*c.configFile, setFlags["config"])
+		if err != nil {
+			log.Error("unable to stat yaml config",
+				zap.String("path", *c.configFile),
+				zap.Error(err),
+			)
+			return false
+		}
+		if load {
+			err := applyYAMLConfig(*c.configFile, setFlags)
+			if err != nil {
+				log.Error("unable to load yaml config",
 					zap.String("path", *c.configFile),
 					zap.Error(err),
 				)
 				return false
 			}
 		}
-		err := applyYAMLConfig(*c.configFile, setFlags)
-		if err != nil {
-			log.Error("unable to load yaml config",
-				zap.String("path", *c.configFile),
-				zap.Error(err),
-			)
-			return false
-		}
 	}
-
-afterYAML:
 
 	if c.statsHost == nil {
 		c.statsHost = statsHost
@@ -136,6 +149,32 @@ func openYAMLConfigFile(path string) (*os.File, string, error) {
 	return f, cleanPath, nil
 }
 
+func applyStringFlag(setFlags map[string]bool, flagName string, from *string, target *string) {
+	if from == nil || setFlags[flagName] {
+		return
+	}
+	*target = *from
+}
+
+func applyBoolFlag(setFlags map[string]bool, flagName string, from *bool, target *bool) {
+	if from == nil || setFlags[flagName] {
+		return
+	}
+	*target = *from
+}
+
+func applyIntervalFlag(setFlags map[string]bool, from *string) error {
+	if from == nil || setFlags["interval"] {
+		return nil
+	}
+	d, err := parseIntervalValue(*from)
+	if err != nil {
+		return err
+	}
+	*interval = d
+	return nil
+}
+
 func applyYAMLConfig(path string, setFlags map[string]bool) error {
 	f, cleanPath, err := openYAMLConfigFile(path)
 	if err != nil {
@@ -159,33 +198,15 @@ func applyYAMLConfig(path string, setFlags map[string]bool) error {
 		return err
 	}
 
-	if yc.StatsHost != nil && !setFlags["statsHost"] {
-		*statsHost = *yc.StatsHost
-	}
-	if yc.StatsPort != nil && !setFlags["statsPort"] {
-		*statsPort = *yc.StatsPort
-	}
-	if yc.PDNSHost != nil && !setFlags["pdnsHost"] {
-		*pdnsHost = *yc.PDNSHost
-	}
-	if yc.PDNSPort != nil && !setFlags["pdnsPort"] {
-		*pdnsPort = *yc.PDNSPort
-	}
-	if yc.APIKey != nil && !setFlags["key"] {
-		*pdnsAPIKey = *yc.APIKey
-	}
-	if yc.Recursor != nil && !setFlags["recursor"] {
-		*recursor = *yc.Recursor
-	}
-	if yc.Histograms != nil && !setFlags["histograms"] {
-		*histograms = *yc.Histograms
-	}
-	if yc.Interval != nil && !setFlags["interval"] {
-		d, err := parseIntervalValue(*yc.Interval)
-		if err != nil {
-			return err
-		}
-		*interval = d
+	applyStringFlag(setFlags, "statsHost", yc.StatsHost, statsHost)
+	applyStringFlag(setFlags, "statsPort", yc.StatsPort, statsPort)
+	applyStringFlag(setFlags, "pdnsHost", yc.PDNSHost, pdnsHost)
+	applyStringFlag(setFlags, "pdnsPort", yc.PDNSPort, pdnsPort)
+	applyStringFlag(setFlags, "key", yc.APIKey, pdnsAPIKey)
+	applyBoolFlag(setFlags, "recursor", yc.Recursor, recursor)
+	applyBoolFlag(setFlags, "histograms", yc.Histograms, histograms)
+	if err := applyIntervalFlag(setFlags, yc.Interval); err != nil {
+		return err
 	}
 
 	return nil
