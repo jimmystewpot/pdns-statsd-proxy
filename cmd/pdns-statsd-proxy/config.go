@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
 
 	"go.uber.org/zap"
-	"go.yaml.in/yaml/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Config holds all the configuration required to start the service.
@@ -104,12 +105,50 @@ type yamlConfig struct {
 	Histograms *bool   `yaml:"histograms"`
 }
 
+func parseIntervalValue(raw string) (time.Duration, error) {
+	if d, err := time.ParseDuration(raw); err == nil {
+		return d, nil
+	}
+	secs, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid interval %q", raw)
+	}
+	return time.Duration(secs) * time.Second, nil
+}
+
+func openYAMLConfigFile(path string) (*os.File, string, error) {
+	cleanPath := filepath.Clean(path)
+	if !filepath.IsAbs(cleanPath) {
+		return nil, "", fmt.Errorf("config path must be absolute: %s", cleanPath)
+	}
+	info, err := os.Stat(cleanPath)
+	if err != nil {
+		return nil, "", err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, "", fmt.Errorf("config path is not a regular file: %s", cleanPath)
+	}
+
+	f, err := os.Open(cleanPath)
+	if err != nil {
+		return nil, "", err
+	}
+	return f, cleanPath, nil
+}
+
 func applyYAMLConfig(path string, setFlags map[string]bool) error {
-	f, err := os.Open(path)
+	f, cleanPath, err := openYAMLConfigFile(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Debug("unable to close yaml config file",
+				zap.String("path", cleanPath),
+				zap.Error(err),
+			)
+		}
+	}()
 	buf, err := io.ReadAll(f)
 	if err != nil {
 		return err
@@ -142,14 +181,11 @@ func applyYAMLConfig(path string, setFlags map[string]bool) error {
 		*histograms = *yc.Histograms
 	}
 	if yc.Interval != nil && !setFlags["interval"] {
-		// Accept either Go duration strings (e.g., 15s) or integer seconds.
-		if d, err := time.ParseDuration(*yc.Interval); err == nil {
-			*interval = d
-		} else if secs, err2 := strconv.Atoi(*yc.Interval); err2 == nil {
-			*interval = time.Duration(secs) * time.Second
-		} else {
-			return fmt.Errorf("invalid interval %q", *yc.Interval)
+		d, err := parseIntervalValue(*yc.Interval)
+		if err != nil {
+			return err
 		}
+		*interval = d
 	}
 
 	return nil
