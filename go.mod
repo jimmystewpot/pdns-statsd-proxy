@@ -3,7 +3,7 @@ module github.com/jimmystewpot/pdns-statsd-proxy
 go 1.25.0
 
 require (
-	github.com/DataDog/datadog-go/v5 v5.8.3
+	github.com/DataDog/datadog-go/v5 v5.9.0
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.69.0
 	go.uber.org/zap v1.28.0
