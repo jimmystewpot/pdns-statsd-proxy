@@ -73,7 +73,7 @@ deps:
 	@echo ""
 	@echo "***** Installing dependencies for ${TOOL} *****"
 	go mod tidy
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.7.2
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.7.2
 
 pdns-statsd-proxy:
 	@echo ""

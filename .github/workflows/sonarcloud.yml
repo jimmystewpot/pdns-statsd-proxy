@@ -15,6 +15,7 @@ permissions:
 jobs:
   generate_coverage_with_sonarcloud:
     name: "Analyse with SonarCloud"
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     runs-on: ubuntu-24.04
 
     steps:

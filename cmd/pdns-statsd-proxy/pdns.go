@@ -198,11 +198,16 @@ func (pdns *pdnsClient) pollWithDiscovery(prometheusMinVersion pdnsVersion) (*ht
 				pdns.serverVersion = v
 				pdns.serverVersionParsed = true
 				pdns.usePrometheus = isAtLeast(v, prometheusMinVersion)
-				if pdns.usePrometheus {
-					pdns.Host = pdns.prometheusPath
-				} else {
-					pdns.Host = pdns.legacyPath
+			} else if promResp, err := pdns.doRequest(pdns.prometheusPath); err == nil {
+				_ = promResp.Body.Close()
+				if promResp.StatusCode == http.StatusOK {
+					pdns.usePrometheus = true
 				}
+			}
+			if pdns.usePrometheus {
+				pdns.Host = pdns.prometheusPath
+			} else {
+				pdns.Host = pdns.legacyPath
 			}
 		})
 	}

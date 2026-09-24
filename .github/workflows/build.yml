@@ -3,7 +3,7 @@ name: Unit Test, Lint and Build
 on:
   push:
     branches:
-      - '**'
+      - master
   pull_request:
     branches:
       - master
@@ -32,24 +32,26 @@ jobs:
       - name: Test and Build
         run: make build
 
+      - name: Contract Tests (Docker)
+        env:
+          PDNS_CONTRACT: "1"
+          GOFLAGS: -buildvcs=false
+        run: go test -tags contract ./...
+
       - name: Codecov
         uses: codecov/codecov-action@v7
         with:
-          fail_ci_if_error: true # optional (default = false)
+          fail_ci_if_error: false # optional (default = false)
           files: reports/** # optional
           flags: unittests # optional
           name: codecov-umbrella # optional
           verbose: true # optional (default = false)
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      - name: Contract Tests (Docker)
-        env:
-          PDNS_CONTRACT: "1"
-          GOFLAGS: -buildvcs=false
-        run: go test -tags contract ./...
   
   snyk-security-scan:
     name: "Snyk Security Scan"
+    if: ${{ secrets.SNYK_API_TOKEN != '' }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

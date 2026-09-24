@@ -46,8 +46,26 @@ func dockerRun(ctx context.Context, t *testing.T, image string, args ...string) 
 	t.Helper()
 
 	cmdArgs := []string{"run", "-d", "--rm"}
-	cmdArgs = append(cmdArgs, args...)
-	cmdArgs = append(cmdArgs, image)
+	dashDash := -1
+	for i, arg := range args {
+		if arg == "--" {
+			dashDash = i
+			break
+		}
+	}
+
+	if dashDash >= 0 {
+		cmdArgs = append(cmdArgs, args[:dashDash]...)
+		cmdArgs = append(cmdArgs, image)
+		containerArgs := args[dashDash+1:]
+		if len(containerArgs) > 0 && containerArgs[0] == "pdns_recursor" {
+			containerArgs = containerArgs[1:]
+		}
+		cmdArgs = append(cmdArgs, containerArgs...)
+	} else {
+		cmdArgs = append(cmdArgs, args...)
+		cmdArgs = append(cmdArgs, image)
+	}
 
 	cmd := exec.CommandContext(ctx, "docker", cmdArgs...)
 	out, err := cmd.CombinedOutput()
@@ -134,6 +152,7 @@ func TestContract_Recursor_Pre43_LegacyStatistics(t *testing.T) {
 		"--local-address=0.0.0.0",
 		"--webserver=yes",
 		"--webserver-address=0.0.0.0",
+		"--webserver-allow-from=0.0.0.0/0,::/0",
 		"--webserver-port=8082",
 		"--api-key="+contractAPIKey,
 	)
@@ -205,6 +224,7 @@ func TestContract_Recursor_43Plus_PrometheusMetrics(t *testing.T) {
 		"--local-address=0.0.0.0",
 		"--webserver=yes",
 		"--webserver-address=0.0.0.0",
+		"--webserver-allow-from=0.0.0.0/0,::/0",
 		"--webserver-port=8082",
 		"--api-key="+contractAPIKey,
 	)
