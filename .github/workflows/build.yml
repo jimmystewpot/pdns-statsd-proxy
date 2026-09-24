@@ -51,13 +51,16 @@ jobs:
   
   snyk-security-scan:
     name: "Snyk Security Scan"
-    if: ${{ secrets.SNYK_API_TOKEN != '' }}
     runs-on: ubuntu-24.04
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_API_TOKEN }}
     steps:
-      - uses: actions/checkout@v7
+      - if: env.SNYK_TOKEN != ''
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - name: Snyk Security Scanning
+      - if: env.SNYK_TOKEN != ''
+        name: Snyk Security Scanning
         uses: snyk/actions/golang@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
