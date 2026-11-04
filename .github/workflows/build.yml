@@ -12,6 +12,7 @@ on:
     - cron: "1 1 2 * *"
 
 permissions:
+  contents: write
   pull-requests: read
 
 jobs:
@@ -31,6 +32,20 @@ jobs:
 
       - name: Test and Build
         run: make build
+
+      - name: Auto-commit go mod tidy for Dependabot
+        if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        run: |
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git fetch origin ${{ github.head_ref }}
+            git checkout -B ${{ github.head_ref }} origin/${{ github.head_ref }}
+            go mod tidy
+            git add go.mod go.sum
+            git commit -m "chore(deps): go mod tidy"
+            git push origin HEAD:refs/heads/${{ github.head_ref }}
+          fi
 
       - name: Contract Tests (Docker)
         env:

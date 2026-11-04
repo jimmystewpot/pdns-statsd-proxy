@@ -3,10 +3,11 @@ SHELL  := /bin/bash
 
 
 TOOL := pdns-statsd-proxy
-export PATH = $(shell echo $$PATH):/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go:/home/runner/go/bin:
+export PATH = $(shell echo $$PATH):$(shell go env GOPATH)/bin:/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/sbin:/bin:/sbin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/build/bin:/home/runner/go:/home/runner/go/bin:
 BINPATH := bin
 GO_DIR := src/github.com/jimmystewpot/pdns-statsd-proxy/
-DOCKER_IMAGE := golang:1.25-trixie
+GO_VERSION := $(shell awk '/^go / {split($$2, v, "."); print v[1]"."v[2]}' go.mod)
+DOCKER_IMAGE := golang:$(GO_VERSION)-trixie
 SNYK_IMAGE := snyk/snyk:golang
 INTERACTIVE := $(shell [ -t 0 ] && echo 1)
 TEST_DIRS := ./...
@@ -45,7 +46,7 @@ lint:
 ifdef INTERACTIVE
 	GOFLAGS=-buildvcs=false golangci-lint run -v $(TEST_DIRS)
 else
-	GOFLAGS=-buildvcs=false golangci-lint run --out-format checkstyle -v $(TEST_DIRS) 1> reports/checkstyle-lint.xml
+	GOFLAGS=-buildvcs=false golangci-lint run --output.checkstyle.path=reports/checkstyle-lint.xml -v $(TEST_DIRS)
 endif
 .PHONY: lint
 
@@ -60,6 +61,7 @@ build: get-golang
 		-v $(CURDIR):/build/$(GO_DIR) \
 		--workdir /build/$(GO_DIR) \
 		-e GOPATH=/build \
+		-e GOTOOLCHAIN=auto \
 		-e PATH=$(PATH) \
 		-e "GOFLAGS=-buildvcs=false" \
 		-t ${DOCKER_IMAGE} \
@@ -73,7 +75,7 @@ deps:
 	@echo ""
 	@echo "***** Installing dependencies for ${TOOL} *****"
 	go mod tidy
-	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v2.7.2
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(shell go env GOPATH)/bin
 
 pdns-statsd-proxy:
 	@echo ""
