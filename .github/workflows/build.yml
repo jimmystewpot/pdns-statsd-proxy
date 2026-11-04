@@ -12,12 +12,16 @@ on:
     - cron: "1 1 2 * *"
 
 permissions:
+  contents: read
   pull-requests: read
 
 jobs:
   build_and_test:
     name: "Lint Test and Build"
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      pull-requests: read
 
     steps:
       - uses: actions/checkout@v7
@@ -48,6 +52,25 @@ jobs:
           verbose: true # optional (default = false)
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Auto-commit go mod tidy for Dependabot
+        if: github.event_name == 'pull_request' && github.actor == 'dependabot[bot]'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [ -n "$(git status --porcelain go.mod go.sum)" ]; then
+            git checkout -- go.mod go.sum
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git fetch origin "$HEAD_REF"
+            git checkout -B "$HEAD_REF" "origin/$HEAD_REF"
+            go mod tidy
+            git add go.mod go.sum
+            if ! git diff --cached --quiet; then
+              git commit -m "chore(deps): go mod tidy"
+              git push origin "HEAD:refs/heads/$HEAD_REF"
+            fi
+          fi
   
   snyk-security-scan:
     name: "Snyk Security Scan"
